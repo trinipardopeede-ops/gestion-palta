@@ -1,0 +1,2757 @@
+================================================================================
+FILE: src/App.jsx
+================================================================================
+
+import { Routes, Route } from 'react-router-dom'
+import Sidebar from './components/Sidebar'
+
+// --- PÁGINAS / VISTAS ---
+import ResumenCosechas from './pages/ResumenCosechas'
+import Cosechas from './pages/Cosechas'
+import Labores from './pages/Labores'
+import Riego from './pages/Riego'
+import Bodega from './pages/Bodega'
+
+// Gestión y Finanzas
+import OfertasComerciales from './pages/OfertasComerciales' 
+import Gastos from './pages/Gastos'
+import Bitacora from './pages/Bitacora'
+
+// Maestros y Configuración
+import Clientes from './pages/Clientes'
+import Proveedores from './pages/Proveedores'
+import ConfiguracionCampo from './pages/ConfiguracionCampo'
+
+import Dashboard from './pages/Dashboard' // <--- Tu nuevo Home unificado
+import DetalleSector from './pages/DetalleSector' // <--- La ficha del sector
+import CuentasSocios from './pages/CuentasSocios' // <--- La página de socios
+import Categorias from './pages/Categorias' // <--- Tu gestión maestra separada
+
+
+function App() {
+  const styles = {
+    layout: {
+      display: 'flex', minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: 'system-ui, -apple-system, sans-serif'
+    },
+    mainContent: {
+      flex: 1, padding: '20px', overflowY: 'auto', height: '100vh', boxSizing: 'border-box'
+    }
+  }
+
+return (
+    <div style={styles.layout}>
+      <Sidebar />
+      <main style={styles.mainContent}>
+        <Routes>
+          {/* 2. CAMBIO EN RUTA RAIZ: Ahora apunta al Dashboard */}
+          <Route path="/" element={<Dashboard />} /> 
+          
+          {/* Rutas existentes... */}
+          <Route path="/cosechas" element={<Cosechas />} />
+          <Route path="/labores" element={<Labores />} />
+          <Route path="/riego" element={<Riego />} />
+          <Route path="/bodega" element={<Bodega />} />
+          
+          {/* 3. AGREGA LA RUTA DINÁMICA PARA EL DETALLE DEL SECTOR */}
+          {/* El ":id" permite que la url sea /sector/1, /sector/2, etc. */}
+          <Route path="/sector/:id" element={<DetalleSector />} />
+
+          <Route path="/ofertas-comerciales" element={<OfertasComerciales />} />
+          <Route path="/gastos" element={<Gastos />} />
+          
+          {/* 4. AGREGA LA RUTA DE CUENTAS DE SOCIOS */}
+          <Route path="/cuentas-socios" element={<CuentasSocios />} />
+          
+          <Route path="/bitacora" element={<Bitacora />} />
+
+          {/* Maestros */}
+          <Route path="/clientes" element={<Clientes />} />
+          <Route path="/proveedores" element={<Proveedores />} />
+          
+          {/* 5. AGREGA LA RUTA DE CATEGORÍAS (Si decidiste separarla) */}
+          <Route path="/categorias" element={<Categorias />} />
+          
+          <Route path="/configuracion" element={<ConfiguracionCampo />} />
+        </Routes>
+      </main>
+    </div>
+  )
+}
+
+export default App
+
+================================================================================
+FILE: src/components/Sidebar.jsx
+================================================================================
+
+import { Link, useLocation } from 'react-router-dom'
+import { 
+  TrendingUp, 
+  Sprout, 
+  Shovel, 
+  Droplet, 
+  Package, 
+  FileText, 
+  DollarSign, 
+  StickyNote, 
+  Briefcase, 
+  Truck, 
+  MapPin,
+  Users, // <--- Nuevo icono para Socios
+  Tags   // <--- Nuevo icono para Categorías
+} from 'lucide-react'
+
+function Sidebar() {
+  const location = useLocation()
+  const currentPath = location.pathname
+
+  const styles = {
+    sidebar: {
+      width: '250px',
+      backgroundColor: '#1f2937', 
+      color: 'white',
+      display: 'flex',
+      flexDirection: 'column',
+      padding: '20px',
+      boxSizing: 'border-box',
+      flexShrink: 0 
+    },
+    logo: {
+      fontSize: '1.5rem',
+      fontWeight: 'bold',
+      marginBottom: '30px',
+      color: '#4ade80', 
+      textAlign: 'center',
+      borderBottom: '1px solid #374151',
+      paddingBottom: '20px'
+    },
+    sectionTitle: {
+      fontSize: '0.75rem',
+      textTransform: 'uppercase',
+      color: '#9ca3af', 
+      fontWeight: 'bold',
+      marginTop: '20px',
+      marginBottom: '10px',
+      letterSpacing: '1px'
+    },
+    navItem: (isActive) => ({
+      display: 'flex',
+      alignItems: 'center',
+      padding: '10px 12px',
+      marginBottom: '5px',
+      borderRadius: '8px',
+      textDecoration: 'none',
+      color: isActive ? 'white' : '#d1d5db',
+      backgroundColor: isActive ? '#374151' : 'transparent',
+      transition: 'background-color 0.2s',
+      fontWeight: isActive ? 'bold' : 'normal',
+      cursor: 'pointer'
+    }),
+    icon: {
+      marginRight: '10px'
+    }
+  }
+
+  // Componente interno para cada enlace
+  const NavItem = ({ to, icon, label }) => {
+    const isActive = currentPath === to
+    return (
+      <Link to={to} style={styles.navItem(isActive)}>
+        <span style={styles.icon}>{icon}</span>
+        {label}
+      </Link>
+    )
+  }
+
+  return (
+    <nav style={styles.sidebar}>
+      <div style={styles.logo}>Gestión Palta 🥑</div>
+
+      <NavItem to="/" icon={<TrendingUp size={20}/>} label="Dashboard" />
+
+      <div style={styles.sectionTitle}>OPERACIONES</div>
+      <NavItem to="/cosechas" icon={<Sprout size={20}/>} label="Cosechas" />
+      <NavItem to="/labores" icon={<Shovel size={20}/>} label="Labores" />
+      <NavItem to="/riego" icon={<Droplet size={20}/>} label="Riego" />
+      <NavItem to="/bodega" icon={<Package size={20}/>} label="Bodega" />
+
+      <div style={styles.sectionTitle}>GESTIÓN</div>
+      <NavItem to="/ofertas-comerciales" icon={<FileText size={20}/>} label="Ofertas / Precios" />
+      <NavItem to="/gastos" icon={<DollarSign size={20}/>} label="Gastos" />
+      <NavItem to="/cuentas-socios" icon={<Users size={20}/>} label="Cuentas Socios" /> {/* Agregado */}
+      <NavItem to="/bitacora" icon={<StickyNote size={20}/>} label="Bitácora" />
+
+      <div style={styles.sectionTitle}>CONFIGURACIÓN</div>
+      <NavItem to="/clientes" icon={<Briefcase size={20}/>} label="Clientes" />
+      <NavItem to="/proveedores" icon={<Truck size={20}/>} label="Proveedores" />
+      <NavItem to="/categorias" icon={<Tags size={20}/>} label="Categorías" /> {/* Agregado */}
+      <NavItem to="/configuracion" icon={<MapPin size={20}/>} label="Campo (Sectores)" />
+    </nav>
+  )
+}
+
+export default Sidebar
+
+================================================================================
+FILE: src/pages/Dashboard.jsx
+================================================================================
+
+import { useState } from 'react'
+import { LayoutDashboard, Wallet, Sprout, CalendarClock } from 'lucide-react'
+
+// Importamos los sub-componentes (asegúrate de haber renombrado los archivos como acordamos)
+import DashboardSectores from './DashboardSectores' // Antes ComparativoSectores.jsx
+import DashboardFinanzas from './DashboardFinanzas' // Antes Finanzas_______.jsx
+import ResumenCosechas from './ResumenCosechas'     // Reutilizamos el resumen existente
+import Labores from './Labores'                     // Reutilizamos la vista de labores
+
+function Dashboard() {
+  const [activeTab, setActiveTab] = useState('sectores')
+
+  // Definición de las pestañas
+  const tabs = [
+    { id: 'sectores', label: 'Sectores', icon: <LayoutDashboard size={18} /> },
+    { id: 'finanzas', label: 'Finanzas', icon: <Wallet size={18} /> },
+    { id: 'cosecha', label: 'Cosecha', icon: <Sprout size={18} /> },
+    { id: 'trabajos', label: 'Trabajos', icon: <CalendarClock size={18} /> },
+  ]
+
+  // Renderizado condicional según la pestaña activa
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'sectores':
+        return <DashboardSectores />
+      case 'finanzas':
+        return <DashboardFinanzas />
+      case 'cosecha':
+        // Pasamos una prop opcional si quieres que se comporte diferente dentro del dashboard
+        return <ResumenCosechas isDashboardView={true} /> 
+      case 'trabajos':
+        // Mostramos labores pero quizás en modo "solo lectura" o vista simplificada si prefieres
+        return <Labores isDashboardView={true} />
+      default:
+        return <DashboardSectores />
+    }
+  }
+
+  const styles = {
+    container: {
+      maxWidth: '1200px',
+      margin: '0 auto',
+      paddingBottom: '40px'
+    },
+    header: {
+      marginBottom: '25px'
+    },
+    title: {
+      fontSize: '1.8rem',
+      fontWeight: 'bold',
+      color: '#111827',
+      marginBottom: '5px'
+    },
+    subtitle: {
+      color: '#6b7280',
+      fontSize: '0.95rem'
+    },
+    tabsContainer: {
+      display: 'flex',
+      gap: '10px',
+      borderBottom: '1px solid #e5e7eb',
+      marginBottom: '30px',
+      overflowX: 'auto', // Para que sea responsivo en móviles
+      paddingBottom: '2px'
+    },
+    tab: (isActive) => ({
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '10px 20px',
+      cursor: 'pointer',
+      fontSize: '0.95rem',
+      fontWeight: isActive ? '600' : '500',
+      color: isActive ? '#2563eb' : '#4b5563',
+      // CORRECCIÓN AQUÍ: Usar propiedades explícitas en lugar de 'border: none'
+      borderTop: 'none',
+      borderLeft: 'none',
+      borderRight: 'none',
+      borderBottom: isActive ? '2px solid #2563eb' : '2px solid transparent',
+      transition: 'all 0.2s ease',
+      backgroundColor: 'transparent',
+      outline: 'none',
+      whiteSpace: 'nowrap'
+    }),
+    contentArea: {
+      animation: 'fadeIn 0.3s ease-in-out'
+    }
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}>Panel de Control</h1>
+        <p style={styles.subtitle}>Visión general del estado de tu campo</p>
+      </div>
+
+      {/* Navegación por Pestañas */}
+      <div style={styles.tabsContainer}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={styles.tab(activeTab === tab.id)}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Área de Contenido Dinámico */}
+      <div style={styles.contentArea}>
+        {renderContent()}
+      </div>
+      
+      {/* Estilo global para la animación simple */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+export default Dashboard
+
+================================================================================
+FILE: src/pages/Cosechas.jsx
+================================================================================
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { Sprout, Calendar, User, FileText, Plus, Trash2, Pencil, MapPin, Scale, ChevronDown, ChevronUp } from 'lucide-react'
+import Modal from '../components/Modal'
+import NuevaCosecha from './NuevaCosecha'
+
+function Cosechas() {
+  const [gruposCosechas, setGruposCosechas] = useState({}) // { 'Parcela A': [cosecha1, cosecha2] }
+  const [loading, setLoading] = useState(true)
+  
+  // ESTADOS DEL MODAL
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editarId, setEditarId] = useState(null)
+
+  // Estado para expandir/colapsar detalles (opcional, por defecto mostramos todo)
+  const [expandidos, setExpandidos] = useState({})
+
+  const formatearDinero = (monto) => '$ ' + Math.round(monto).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+  const formatearFecha = (f) => f ? f.split('-').reverse().join('/') : '-'
+
+  useEffect(() => {
+    leerCosechas()
+  }, [])
+
+  const abrirCrear = () => { setEditarId(null); setModalOpen(true) }
+  const abrirEditar = (id) => { setEditarId(id); setModalOpen(true) }
+  
+  const cerrarModal = () => {
+      if (window.intentarCerrarModal) window.intentarCerrarModal()
+      else setModalOpen(false)
+  }
+
+  const handleGuardado = () => { setModalOpen(false); leerCosechas() }
+
+  async function leerCosechas() {
+    setLoading(true)
+    // TRAEMOS TODO: Cosecha, Cliente, Sector, Parcela y DETALLES
+    const { data } = await supabase
+      .from('cosechas')
+      .select(`
+        *,
+        clientes ( nombre ),
+        sectores ( nombre, parcelas ( nombre ) ),
+        detalle_cosechas ( calibre, kilos, precio_kilo )
+      `)
+      .order('fecha', { ascending: false })
+    
+    if (data) {
+        // AGRUPAR POR PARCELA
+        const agrupado = data.reduce((acc, item) => {
+            const nombreParcela = item.sectores?.parcelas?.nombre || 'Sin Parcela Asignada'
+            if (!acc[nombreParcela]) acc[nombreParcela] = []
+            acc[nombreParcela].push(item)
+            return acc
+        }, {})
+        setGruposCosechas(agrupado)
+    }
+    setLoading(false)
+  }
+
+  const eliminar = async (id) => {
+    if (confirm("¿Eliminar este registro de cosecha y sus detalles?")) {
+      await supabase.from('cosechas').delete().eq('id', id)
+      leerCosechas()
+    }
+  }
+
+  const renderBadge = (destino) => {
+    const stylesBadge = {
+        'Venta': { bg: '#dcfce7', color: '#166534', icon: '💰' },
+        'Consumo Interno': { bg: '#ffedd5', color: '#9a3412', icon: '🏠' },
+        'Mermas': { bg: '#fee2e2', color: '#991b1b', icon: '🗑️' }
+    }
+    const config = stylesBadge[destino] || stylesBadge['Venta']
+    
+    return (
+        <span style={{ backgroundColor: config.bg, color: config.color, padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', display: 'inline-block', marginBottom: '10px' }}>
+            {config.icon} {destino}
+        </span>
+    )
+  }
+
+  const styles = {
+    container: { padding: '20px', width: '100%' },
+    header: { display: 'flex', justifyContent: 'flex-start', gap: '20px', alignItems: 'center', marginBottom: '30px' },
+    title: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' },
+    btnNew: { border: 'none', cursor: 'pointer', textDecoration: 'none', backgroundColor: '#16a34a', color: 'white', padding: '10px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '0.9rem' },
+    
+    // Agrupación
+    parcelaSection: { marginBottom: '40px' },
+    parcelaTitle: { fontSize: '1.2rem', fontWeight: 'bold', color: '#374151', borderBottom: '1px solid #e5e7eb', paddingBottom: '10px', marginBottom: '15px', display:'flex', alignItems:'center', gap:'8px' },
+    
+    // Grid
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' },
+    
+    // Tarjeta
+    card: { backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb', overflow:'hidden', display:'flex', flexDirection:'column' },
+    cardHeader: { padding: '15px', backgroundColor: '#fff', display:'flex', justifyContent:'space-between', alignItems:'flex-start' },
+    
+    sectorName: { fontSize: '1rem', fontWeight: 'bold', color: '#16a34a' },
+    kilosBig: { fontSize: '1.4rem', fontWeight: 'bold', color: '#1f2937' },
+    
+    metaRow: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#6b7280', marginTop:'4px' },
+    
+    // Mini Tabla Calibres
+    tableContainer: { padding: '0 15px 15px 15px' },
+    miniTable: { width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse', backgroundColor: '#f9fafb', borderRadius: '6px', overflow:'hidden' },
+    td: { padding: '6px 10px', borderBottom: '1px solid #e5e7eb', color: '#374151' },
+    th: { padding: '6px 10px', textAlign: 'left', fontWeight: 'bold', color: '#6b7280', backgroundColor: '#f3f4f6' },
+    
+    moneyBlock: { marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #e5e7eb', display:'flex', justifyContent:'space-between', alignItems:'center' },
+    
+    actions: { display:'flex', gap:'5px' },
+    btnIcon: { background:'none', border:'none', cursor:'pointer', color:'#9ca3af', padding:'4px' }
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}><Sprout color="#16a34a" /> Registro de Cosechas</h1>
+        <button onClick={abrirCrear} style={styles.btnNew}><Plus size={18} /> Nueva Cosecha</button>
+      </div>
+
+      {loading && <div style={{padding:'20px', color:'#9ca3af'}}>Cargando registros...</div>}
+
+      {!loading && Object.keys(gruposCosechas).length === 0 && (
+          <div style={{textAlign:'center', padding:'40px', color:'#9ca3af', border:'2px dashed #e5e7eb', borderRadius:'12px'}}>
+              No hay cosechas registradas.
+          </div>
+      )}
+
+      {/* ITERAMOS POR PARCELA */}
+      {Object.keys(gruposCosechas).sort().map(parcela => (
+          <div key={parcela} style={styles.parcelaSection}>
+              <h3 style={styles.parcelaTitle}><MapPin size={20} color="#16a34a"/> {parcela}</h3>
+              
+              <div style={styles.grid}>
+                  {gruposCosechas[parcela].map(c => {
+                      const totalDinero = (c.kilos || 0) * (c.precio_kilo || 0)
+                      return (
+                          <div key={c.id} style={styles.card}>
+                              <div style={styles.cardHeader}>
+                                  <div>
+                                      {renderBadge(c.destino)}
+                                      <div style={styles.kilosBig}>{c.kilos} Kg</div>
+                                      <div style={styles.sectorName}>{c.sectores?.nombre}</div>
+                                      <div style={styles.metaRow}><Calendar size={14}/> {formatearFecha(c.fecha)}</div>
+                                      
+                                      {c.destino === 'Venta' && (
+                                          <div style={styles.metaRow}>
+                                              <User size={14}/> {c.clientes?.nombre || 'Sin Cliente'}
+                                              {c.tipo_documento && <span style={{fontSize:'0.75rem', backgroundColor:'#f3f4f6', padding:'2px 5px', borderRadius:'4px'}}>{c.tipo_documento} {c.nro_documento}</span>}
+                                          </div>
+                                      )}
+                                  </div>
+                                  
+                                  <div style={styles.actions}>
+                                      <button onClick={() => abrirEditar(c.id)} style={styles.btnIcon}><Pencil size={16}/></button>
+                                      <button onClick={() => eliminar(c.id)} style={{...styles.btnIcon, color:'#ef4444'}}><Trash2 size={16}/></button>
+                                  </div>
+                              </div>
+
+                              {/* TABLA DE DETALLES (CALIBRES) */}
+                              <div style={styles.tableContainer}>
+                                  {c.detalle_cosechas && c.detalle_cosechas.length > 0 ? (
+                                      <table style={styles.miniTable}>
+                                          <thead>
+                                              <tr>
+                                                  <th style={styles.th}>Calibre</th>
+                                                  <th style={{...styles.th, textAlign:'right'}}>Kg</th>
+                                                  {c.destino === 'Venta' && <th style={{...styles.th, textAlign:'right'}}>$</th>}
+                                              </tr>
+                                          </thead>
+                                          <tbody>
+                                              {c.detalle_cosechas.map((d, idx) => (
+                                                  <tr key={idx}>
+                                                      <td style={styles.td}>{d.calibre}</td>
+                                                      <td style={{...styles.td, textAlign:'right'}}>{d.kilos}</td>
+                                                      {c.destino === 'Venta' && <td style={{...styles.td, textAlign:'right', color:'#16a34a'}}>{formatearDinero(d.precio_kilo)}</td>}
+                                                  </tr>
+                                              ))}
+                                          </tbody>
+                                      </table>
+                                  ) : (
+                                      <div style={{fontSize:'0.8rem', fontStyle:'italic', color:'#9ca3af', padding:'10px 0'}}>Sin detalle de calibres</div>
+                                  )}
+
+                                  {/* TOTAL MONETARIO */}
+                                  {c.destino === 'Venta' && (
+                                      <div style={styles.moneyBlock}>
+                                          <span style={{fontSize:'0.85rem', color:'#6b7280'}}>Total Venta</span>
+                                          <span style={{fontWeight:'bold', color:'#15803d', fontSize:'1.1rem'}}>{formatearDinero(totalDinero)}</span>
+                                      </div>
+                                  )}
+                                  
+                                  {c.comentarios && (
+                                      <div style={{fontSize:'0.8rem', color:'#6b7280', marginTop:'10px', fontStyle:'italic'}}>
+                                          "{c.comentarios}"
+                                      </div>
+                                  )}
+                              </div>
+                          </div>
+                      )
+                  })}
+              </div>
+          </div>
+      ))}
+
+      <Modal 
+        isOpen={modalOpen} 
+        onClose={cerrarModal} 
+        title={editarId ? "Editar Cosecha" : "Registrar Nueva Cosecha"}
+      >
+        {modalOpen && (
+            <NuevaCosecha 
+                idCosecha={editarId} 
+                cerrarModal={() => setModalOpen(false)} 
+                alGuardar={handleGuardado} 
+            />
+        )}
+      </Modal>
+
+    </div>
+  )
+}
+export default Cosechas
+
+
+================================================================================
+FILE: src/pages/Labores.jsx
+================================================================================
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { Shovel, Plus, Calendar, Edit, Trash2, Search, X } from 'lucide-react'
+import Modal from '../components/Modal'
+import NuevaLabor from './NuevaLabor'
+
+function Labores() {
+  const [labores, setLabores] = useState([])
+  const [loading, setLoading] = useState(true)
+  
+  // 1. CAMBIO: Iniciamos vacío para ver todo el historial por defecto
+  const [mesFiltro, setMesFiltro] = useState('') 
+  const [textoBusqueda, setTextoBusqueda] = useState('')
+
+  // Estados del Modal
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editId, setEditId] = useState(null)
+
+  useEffect(() => {
+    cargarLabores()
+  }, [mesFiltro]) // Se recarga cuando el usuario elige un mes o lo borra
+
+  async function cargarLabores() {
+    setLoading(true)
+    
+    // 2. CAMBIO: Construcción dinámica de la consulta
+    let query = supabase
+      .from('labores_campo')
+      .select(`
+        *,
+        sectores ( nombre )
+      `)
+      .order('fecha', { ascending: false }) // Siempre ordenamos por lo más reciente
+
+    // Solo aplicamos filtro de fecha si el usuario seleccionó un mes
+    if (mesFiltro) {
+        const inicioMes = `${mesFiltro}-01`
+        const finMes = `${mesFiltro}-31`
+        query = query.gte('fecha', inicioMes).lte('fecha', finMes)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+        console.error("Error cargando labores:", error)
+    } else {
+        setLabores(data || [])
+    }
+    
+    setLoading(false)
+  }
+
+  // --- LÓGICA DE CIERRE ---
+  const handleCloseRequest = () => {
+      if (window.intentarCerrarModal) {
+          window.intentarCerrarModal()
+      } else {
+          setModalOpen(false)
+      }
+  }
+
+  const abrirNueva = () => { setEditId(null); setModalOpen(true); }
+  const abrirEditar = (labor) => { setEditId(labor.id); setModalOpen(true); }
+
+  const eliminarLabor = async (id) => {
+      if(!confirm("¿Estás seguro de eliminar esta labor?")) return;
+      const { error } = await supabase.from('labores_campo').delete().eq('id', id)
+      if(error) alert(error.message)
+      else cargarLabores()
+  }
+
+  const laboresFiltradas = labores.filter(l => 
+      l.tipo_labor.toLowerCase().includes(textoBusqueda.toLowerCase()) ||
+      l.sectores?.nombre?.toLowerCase().includes(textoBusqueda.toLowerCase()) ||
+      l.comentarios?.toLowerCase().includes(textoBusqueda.toLowerCase())
+  )
+
+  const fmtDinero = (m) => '$ ' + Math.round(m).toLocaleString('es-CL')
+
+  // Helper para mostrar icono según labor (Mismo mapa que NuevaLabor)
+  const getIconoLabor = (tipo) => {
+      const mapa = {
+          'Riego': '💧', 'Fertilización': '🧪', 'Poda': '✂️', 'Cosecha': '🥑',
+          'Fitosanitario': '😷', 'Mantenimiento Riego': '🔧', 'Limpieza': '🍂',
+          'Plantación': '🌱', 'Otros': '📝'
+      }
+      // Buscamos si el tipo contiene alguna de las claves (por si guardaste "Riego Sector 1")
+      const key = Object.keys(mapa).find(k => tipo?.includes(k))
+      return key ? mapa[key] : '📋'
+  }
+
+  const styles = {
+    container: { padding: '20px', width: '90%' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap:'wrap', gap:'15px' },
+    title: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.8rem', fontWeight: 'bold', color: '#1f2937' },
+    
+    controls: { display:'flex', gap:'10px', alignItems:'center', flexWrap:'wrap' },
+    inputSearch: { padding:'8px 12px', borderRadius:'6px', border:'1px solid #d1d5db', outline:'none', height:'40px', boxSizing:'border-box' },
+    btnNew: { backgroundColor: '#1f2937', color: 'white', border: 'none', padding: '0 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', height:'40px' },
+    
+    tableContainer: { overflowX: 'auto', backgroundColor:'white', borderRadius:'12px', boxShadow:'0 2px 5px rgba(0,0,0,0.05)', border:'1px solid #e5e7eb' },
+    table: { width: '100%', borderCollapse: 'collapse', minWidth:'600px' },
+    th: { textAlign: 'left', padding: '15px', borderBottom: '2px solid #f3f4f6', color: '#6b7280', fontSize: '0.85rem', textTransform: 'uppercase' },
+    td: { padding: '15px', borderBottom: '1px solid #f3f4f6', color: '#374151', fontSize: '0.95rem' },
+    
+    badge: { padding:'4px 8px', borderRadius:'12px', fontSize:'0.85rem', fontWeight:'500', backgroundColor:'#f3f4f6', color:'#374151', display:'inline-flex', alignItems:'center', gap:'5px' },
+    actions: { display:'flex', gap:'10px' }
+  }
+
+  return (
+    <div style={styles.container}>
+      
+      <div style={styles.header}>
+        <h1 style={styles.title}><Shovel color="#d97706"/> Labores de Campo</h1>
+        
+        <div style={styles.controls}>
+            {/* Buscador */}
+            <div style={{position:'relative', display:'flex', alignItems:'center'}}>
+                <Search size={16} style={{position:'absolute', left:10, color:'#9ca3af'}}/>
+                <input 
+                    type="text" 
+                    placeholder="Buscar labor..." 
+                    value={textoBusqueda}
+                    onChange={e => setTextoBusqueda(e.target.value)}
+                    style={{...styles.inputSearch, paddingLeft:'30px'}}
+                />
+            </div>
+
+            {/* Filtro Mes (Con botón limpiar si está activo) */}
+            <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
+                <input 
+                    type="month" 
+                    value={mesFiltro} 
+                    onChange={e => setMesFiltro(e.target.value)}
+                    style={styles.inputSearch}
+                    title="Filtrar por mes"
+                />
+                {mesFiltro && (
+                    <button onClick={() => setMesFiltro('')} style={{border:'none', background:'#fee2e2', color:'#ef4444', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}} title="Quitar filtro">
+                        <X size={16}/>
+                    </button>
+                )}
+            </div>
+
+            <button onClick={abrirNueva} style={styles.btnNew}>
+                <Plus size={18}/> Registrar Labor
+            </button>
+        </div>
+      </div>
+
+      <div style={styles.tableContainer}>
+          <table style={styles.table}>
+              <thead>
+                  <tr>
+                      <th style={styles.th}>Fecha</th>
+                      <th style={styles.th}>Sector</th>
+                      <th style={styles.th}>Tipo Labor</th>
+                      <th style={styles.th}>Costo</th>
+                      <th style={styles.th}>Acciones</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  {loading ? (
+                      <tr><td colSpan="5" style={{padding:'30px', textAlign:'center', color:'#9ca3af'}}>Cargando labores...</td></tr>
+                  ) : laboresFiltradas.length === 0 ? (
+                      <tr><td colSpan="5" style={{padding:'30px', textAlign:'center', color:'#9ca3af'}}>
+                          {mesFiltro ? 'No hay labores en el mes seleccionado.' : 'No hay labores registradas.'}
+                      </td></tr>
+                  ) : (
+                      laboresFiltradas.map(l => (
+                          <tr key={l.id}>
+                              <td style={styles.td}>
+                                  <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                                      <Calendar size={14} color="#9ca3af"/>
+                                      {l.fecha.split('-').reverse().join('/')}
+                                  </div>
+                              </td>
+                              <td style={styles.td}>
+                                  <span style={{fontWeight:'bold'}}>{l.sectores?.nombre || 'General'}</span>
+                              </td>
+                              <td style={styles.td}>
+                                  <span style={styles.badge}>
+                                      {getIconoLabor(l.tipo_labor)} {l.tipo_labor}
+                                  </span>
+                                  {l.comentarios && (
+                                    <div style={{fontSize:'0.8rem', color:'#6b7280', marginTop:'4px', maxWidth:'300px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                                        {l.comentarios}
+                                    </div>
+                                  )}
+                              </td>
+                              <td style={styles.td}>{fmtDinero(l.costo_total)}</td>
+                              <td style={styles.td}>
+                                  <div style={styles.actions}>
+                                      <button onClick={() => abrirEditar(l)} style={{border:'none', background:'none', cursor:'pointer', color:'#2563eb'}}>
+                                          <Edit size={18}/>
+                                      </button>
+                                      <button onClick={() => eliminarLabor(l.id)} style={{border:'none', background:'none', cursor:'pointer', color:'#ef4444'}}>
+                                          <Trash2 size={18}/>
+                                      </button>
+                                  </div>
+                              </td>
+                          </tr>
+                      ))
+                  )}
+              </tbody>
+          </table>
+      </div>
+
+      {/* MODAL */}
+      <Modal 
+        isOpen={modalOpen} 
+        onClose={handleCloseRequest} 
+        title={editId ? "Editar Labor" : "Nueva Labor"}
+      >
+          {modalOpen && (
+            <NuevaLabor 
+                idLabor={editId}
+                cerrarModal={() => setModalOpen(false)} 
+                alGuardar={() => { setModalOpen(false); cargarLabores(); }}
+            />
+          )}
+      </Modal>
+
+    </div>
+  )
+}
+
+export default Labores
+
+
+================================================================================
+FILE: src/pages/Riego.jsx
+================================================================================
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { Droplets, Calendar, Clock, Plus, Pencil, Trash2 } from 'lucide-react'
+import Modal from '../components/Modal'
+import NuevoPrograma from './NuevoPrograma'
+
+function Riego() {
+  const [gruposRiego, setGruposRiego] = useState({}) 
+  const [historial, setHistorial] = useState([])
+  
+  // MODAL
+  const [modalOpen, setModalOpen] = useState(false)
+  const [programaEditarId, setProgramaEditarId] = useState(null) // Para manejar edición
+
+  useEffect(() => {
+    cargarDatos()
+  }, [])
+
+  // MODO CREAR
+  const abrirModalNuevo = () => {
+    setProgramaEditarId(null)
+    setModalOpen(true)
+  }
+
+  // MODO EDITAR
+  const abrirModalEditar = (id) => {
+    setProgramaEditarId(id)
+    setModalOpen(true)
+  }
+
+  const handleCloseRequest = () => {
+    if (window.intentarCerrarModal) window.intentarCerrarModal()
+    else setModalOpen(false)
+  }
+
+  const handleGuardar = () => {
+    setModalOpen(false)
+    cargarDatos()
+  }
+
+  // ELIMINAR (Finalizar programa o borrar si fue error)
+  const eliminarPrograma = async (id) => {
+      if(confirm("¿Estás seguro de ELIMINAR este programa activo?")) {
+          await supabase.from('programas_riego').delete().eq('id', id)
+          cargarDatos()
+      }
+  }
+
+  async function cargarDatos() {
+    // 1. Programas Activos
+    const { data: activos } = await supabase
+      .from('programas_riego')
+      .select('*, sectores(nombre, parcelas(nombre))') 
+      .is('fecha_fin', null)
+    
+    if (activos) {
+        const agrupado = activos.reduce((acc, prog) => {
+            const nombreParcela = prog.sectores?.parcelas?.nombre || 'Sin Parcela'
+            if (!acc[nombreParcela]) acc[nombreParcela] = []
+            acc[nombreParcela].push(prog)
+            return acc
+        }, {})
+        setGruposRiego(agrupado)
+    }
+
+    // 2. Historial (sin medidor)
+    const { data: hist } = await supabase.from('programas_riego').select('*, sectores(nombre)').not('fecha_fin', 'is', null).order('fecha_fin', { ascending: false }).limit(5)
+    setHistorial(hist || [])
+  }
+
+  const formatearFecha = (f) => f ? f.split('-').reverse().join('/') : '-'
+
+  const renderDias = (diasArray) => {
+      if (!Array.isArray(diasArray)) return null
+      const diasCortos = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do']
+      const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+      return (
+          <div style={{display:'flex', gap:'4px', marginTop:'8px'}}>
+              {diasNombres.map((dia, idx) => {
+                  const activo = diasArray.includes(dia)
+                  return (
+                      <div key={dia} style={{
+                          width:'20px', height:'20px', borderRadius:'50%', fontSize:'0.6rem',
+                          display:'flex', alignItems:'center', justifyContent:'center',
+                          backgroundColor: activo ? '#0ea5e9' : '#e5e7eb',
+                          color: activo ? 'white' : '#9ca3af',
+                          fontWeight: 'bold'
+                      }}>
+                          {diasCortos[idx]}
+                      </div>
+                  )
+              })}
+          </div>
+      )
+  }
+
+  const styles = {
+    container: { padding: '20px', width: '90%' },
+    header: { display: 'flex', justifyContent: 'flex-start', gap:'20px', alignItems: 'center', marginBottom: '30px' },
+    title: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' },
+    btnNew: { textDecoration: 'none', backgroundColor: '#0ea5e9', color: 'white', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px' },
+    
+    activeGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' },
+    activeCard: { backgroundColor: 'white', borderLeft: '5px solid #0ea5e9', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', position: 'relative' },
+    
+    actions: { position: 'absolute', top: '15px', right: '15px', display: 'flex', gap: '8px' },
+    btnIcon: { border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' },
+
+    table: { width: '100%', borderCollapse: 'collapse', backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', marginTop:'10px' },
+    th: { textAlign: 'left', padding: '10px', backgroundColor: '#f9fafb', color: '#6b7280', fontSize: '0.8rem' },
+    td: { padding: '10px', borderBottom: '1px solid #f3f4f6', fontSize: '0.9rem' },
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}><Droplets color="#0ea5e9" /> Gestión de Riego</h1>
+        <button onClick={abrirModalNuevo} style={styles.btnNew}><Plus size={18}/> Cambiar Programa</button>
+      </div>
+
+      {Object.keys(gruposRiego).length === 0 ? (
+         <div style={{padding:'40px', textAlign:'center', backgroundColor:'white', borderRadius:'12px', color:'#9ca3af', border:'2px dashed #e5e7eb'}}>
+            No hay programas de riego activos. Inicia uno nuevo.
+         </div>
+      ) : (
+         Object.keys(gruposRiego).sort().map(parcela => (
+             <div key={parcela} style={{marginBottom:'30px'}}>
+                 <h3 style={{color:'#64748b', borderBottom:'1px solid #cbd5e1', paddingBottom:'5px', marginBottom:'15px'}}>{parcela}</h3>
+                 <div style={styles.activeGrid}>
+                     {gruposRiego[parcela].map(prog => (
+                        <div key={prog.id} style={styles.activeCard}>
+                            {/* BOTONES DE ACCIÓN */}
+                            <div style={styles.actions}>
+                                <button onClick={() => abrirModalEditar(prog.id)} style={{...styles.btnIcon, color:'#2563eb'}} title="Editar"><Pencil size={18}/></button>
+                                <button onClick={() => eliminarPrograma(prog.id)} style={{...styles.btnIcon, color:'#ef4444'}} title="Eliminar"><Trash2 size={18}/></button>
+                            </div>
+
+                            <div style={{fontSize:'1.1rem', fontWeight:'bold', color:'#1f2937'}}>{prog.sectores?.nombre}</div>
+                            
+                            {prog.dias_semana ? renderDias(prog.dias_semana) : <div style={{fontWeight:'bold', color:'#0ea5e9', margin:'10px 0'}}>{prog.frecuencia}</div>}
+
+                            <div style={{marginTop:'15px', fontSize:'0.9rem'}}>
+                                {prog.turnos && Array.isArray(prog.turnos) ? (
+                                    prog.turnos.map((t, i) => (
+                                        <div key={i} style={{display:'flex', alignItems:'center', gap:'5px', marginBottom:'4px', color:'#4b5563'}}>
+                                            <Clock size={14} color="#9ca3af"/> 
+                                            <strong>{t.hora}</strong> 
+                                            <span style={{color:'#9ca3af'}}>({t.minutos} min)</span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div style={{display:'flex', alignItems:'center', gap:'5px', color:'#4b5563'}}>
+                                        <Clock size={14}/> {prog.duracion_minutos} min / día
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{marginTop:'15px', borderTop:'1px solid #f3f4f6', paddingTop:'10px', fontSize:'0.8rem', color:'#9ca3af', display:'flex', gap:'5px'}}>
+                                <Calendar size={14}/> Desde: {formatearFecha(prog.fecha_inicio)}
+                            </div>
+                        </div>
+                     ))}
+                 </div>
+             </div>
+         ))
+      )}
+
+      {/* SOLO HISTORIAL (Ya no hay medidor) */}
+      <div style={{marginTop:'40px'}}>
+          <h3 style={{color:'#6b7280'}}>Historial de Cambios</h3>
+          <table style={styles.table}>
+            <thead><tr><th style={styles.th}>Sector</th><th style={styles.th}>Fecha</th><th style={styles.th}>Duración</th></tr></thead>
+            <tbody>
+              {historial.map(h => (
+                <tr key={h.id}><td style={styles.td}>{h.sectores?.nombre}</td><td style={styles.td}>{formatearFecha(h.fecha_inicio)}</td><td style={styles.td}>{h.duracion_minutos}m / día</td></tr>
+              ))}
+            </tbody>
+          </table>
+      </div>
+
+      <Modal 
+        isOpen={modalOpen} 
+        onClose={handleCloseRequest} 
+        title={programaEditarId ? "Editar Programa Existente" : "Configurar Nuevo Programa"}
+      >
+        {modalOpen && (
+            <NuevoPrograma 
+                idPrograma={programaEditarId}
+                cerrarModal={() => setModalOpen(false)} 
+                alGuardar={handleGuardar}
+            />
+        )}
+      </Modal>
+    </div>
+  )
+}
+export default Riego
+
+
+================================================================================
+FILE: src/pages/Bodega.jsx
+================================================================================
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { Package, Plus, ArrowUpCircle, ArrowDownCircle, Search, AlertTriangle, History } from 'lucide-react'
+import Modal from '../components/Modal'
+import NuevoProducto from './NuevoProducto'
+import NuevoMovimientoBodega from './NuevoMovimientoBodega'
+
+function Bodega() {
+  const [productos, setProductos] = useState([])
+  const [filtro, setFiltro] = useState('')
+  
+  // Modales
+  const [modalProductoOpen, setModalProductoOpen] = useState(false)
+  const [modalMovimientoOpen, setModalMovimientoOpen] = useState(false)
+  
+  const [productoEditar, setProductoEditar] = useState(null) // Para editar ficha
+  const [movimientoConfig, setMovimientoConfig] = useState(null) // { tipo: 'Entrada', productoId: 1 }
+
+  useEffect(() => {
+    cargarBodega()
+  }, [])
+
+  async function cargarBodega() {
+    const { data } = await supabase.from('bodega_insumos').select('*').order('nombre')
+    if (data) setProductos(data)
+  }
+
+  // --- ACCIONES ---
+  const abrirNuevoProducto = () => {
+    setProductoEditar(null)
+    setModalProductoOpen(true)
+  }
+
+  const abrirEditarProducto = (prod) => {
+    setProductoEditar(prod)
+    setModalProductoOpen(true)
+  }
+
+  const abrirMovimiento = (tipo, prod) => {
+    setMovimientoConfig({ tipo, producto: prod })
+    setModalMovimientoOpen(true)
+  }
+
+  const productosFiltrados = productos.filter(p => 
+    p.nombre.toLowerCase().includes(filtro.toLowerCase()) || 
+    p.categoria?.toLowerCase().includes(filtro.toLowerCase())
+  )
+
+  const styles = {
+    container: { padding: '20px', width: '100%' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap:'wrap', gap:'15px' },
+    title: { fontSize: '1.8rem', fontWeight: 'bold', color: '#1f2937', display:'flex', alignItems:'center', gap:'10px' },
+    
+    searchBar: { display:'flex', alignItems:'center', backgroundColor:'white', padding:'8px 15px', borderRadius:'8px', border:'1px solid #d1d5db', width:'300px' },
+    searchInput: { border:'none', outline:'none', marginLeft:'10px', width:'100%', fontSize:'0.95rem' },
+
+    btnNew: { backgroundColor: '#1f2937', color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold', display:'flex', alignItems:'center', gap:'8px' },
+
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' },
+    
+    card: { backgroundColor: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display:'flex', flexDirection:'column', justifyContent:'space-between' },
+    cardHeader: { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'10px' },
+    prodName: { fontSize: '1.1rem', fontWeight: 'bold', color: '#1f2937' },
+    prodCat: { fontSize: '0.8rem', color: '#6b7280', backgroundColor:'#f3f4f6', padding:'2px 8px', borderRadius:'4px', marginTop:'4px', display:'inline-block' },
+    
+    stockBig: { fontSize: '2rem', fontWeight: 'bold', color: '#2563eb', margin: '10px 0' },
+    stockUnit: { fontSize: '1rem', color: '#6b7280', fontWeight:'normal', marginLeft:'5px' },
+
+    actionsRow: { display:'flex', gap:'10px', marginTop:'15px', borderTop:'1px solid #f3f4f6', paddingTop:'15px' },
+    btnAction: (color, bg) => ({ flex:1, padding:'8px', borderRadius:'6px', border:'none', cursor:'pointer', fontWeight:'bold', fontSize:'0.85rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', backgroundColor: bg, color: color }),
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}><Package color="#2563eb"/> Bodega</h1>
+        
+        <div style={styles.searchBar}>
+            <Search size={18} color="#9ca3af"/>
+            <input 
+                type="text" 
+                placeholder="Buscar insumo..." 
+                style={styles.searchInput}
+                value={filtro}
+                onChange={e => setFiltro(e.target.value)}
+            />
+        </div>
+
+        <button onClick={abrirNuevoProducto} style={styles.btnNew}><Plus size={18}/> Nuevo Producto</button>
+      </div>
+
+      <div style={styles.grid}>
+        {productosFiltrados.map(p => (
+            <div key={p.id} style={styles.card}>
+                <div>
+                    <div style={styles.cardHeader}>
+                        <div>
+                            <div style={styles.prodName}>{p.nombre}</div>
+                            <span style={styles.prodCat}>{p.categoria}</span>
+                        </div>
+                        <button onClick={() => abrirEditarProducto(p)} style={{border:'none', background:'none', color:'#9ca3af', cursor:'pointer'}} title="Editar Ficha">
+                            <History size={18}/>
+                        </button>
+                    </div>
+
+                    <div style={styles.stockBig}>
+                        {parseFloat(p.stock_actual).toLocaleString('es-CL')} 
+                        <span style={styles.stockUnit}>{p.unidad_medida}</span>
+                    </div>
+
+                    {p.stock_actual <= p.stock_minimo && (
+                        <div style={{display:'flex', alignItems:'center', gap:'5px', color:'#ef4444', fontSize:'0.85rem', fontWeight:'bold'}}>
+                            <AlertTriangle size={14}/> Stock Bajo (Min: {p.stock_minimo})
+                        </div>
+                    )}
+                </div>
+
+                <div style={styles.actionsRow}>
+                    <button 
+                        onClick={() => abrirMovimiento('Entrada', p)} 
+                        style={styles.btnAction('#166534', '#dcfce7')}
+                    >
+                        <ArrowUpCircle size={16}/> Entrada
+                    </button>
+                    <button 
+                        onClick={() => abrirMovimiento('Salida', p)} 
+                        style={styles.btnAction('#991b1b', '#fee2e2')}
+                    >
+                        <ArrowDownCircle size={16}/> Salida
+                    </button>
+                </div>
+            </div>
+        ))}
+      </div>
+      
+      {/* MODALES */}
+      <Modal isOpen={modalProductoOpen} onClose={() => setModalProductoOpen(false)} title={productoEditar ? "Editar Producto" : "Nuevo Producto"}>
+          {modalProductoOpen && (
+            <NuevoProducto 
+                producto={productoEditar} 
+                cerrar={() => setModalProductoOpen(false)} 
+                alGuardar={() => { setModalProductoOpen(false); cargarBodega() }}
+            />
+          )}
+      </Modal>
+
+      <Modal isOpen={modalMovimientoOpen} onClose={() => setModalMovimientoOpen(false)} title={`Registrar ${movimientoConfig?.tipo || 'Movimiento'}`}>
+          {modalMovimientoOpen && (
+            <NuevoMovimientoBodega 
+                config={movimientoConfig}
+                cerrar={() => setModalMovimientoOpen(false)}
+                alGuardar={() => { setModalMovimientoOpen(false); cargarBodega() }}
+            />
+          )}
+      </Modal>
+
+    </div>
+  )
+}
+
+export default Bodega
+
+
+================================================================================
+FILE: src/pages/OfertasComerciales.jsx
+================================================================================
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { FileText, Plus, Pencil, Trash2, CheckCircle, XCircle } from 'lucide-react'
+import Modal from '../components/Modal'
+import NuevaOferta from '../pages/NuevaOferta'
+
+function OfertasComerciales() {
+  const [ofertas, setOfertas] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editId, setEditId] = useState(null)
+
+  useEffect(() => { cargarOfertas() }, [])
+
+  async function cargarOfertas() {
+    setLoading(true)
+    // Leemos la tabla 'ofertas_comerciales' que usa la columna JSON para precios
+    const { data, error } = await supabase
+      .from('ofertas_comerciales')
+      .select('*, clientes(nombre)')
+      .order('created_at', { ascending: false })
+    
+    if (error) console.error("Error cargando ofertas:", error)
+    else setOfertas(data || [])
+    setLoading(false)
+  }
+
+  const handleClose = () => {
+     // Intenta usar la protección de cierre del modal hijo si existe
+     if (window.intentarCerrarModal) window.intentarCerrarModal()
+     else setModalOpen(false)
+  }
+
+  const eliminarOferta = async (id) => {
+      if(!confirm("¿Estás seguro de eliminar esta oferta comercial?")) return
+      
+      const { error } = await supabase.from('ofertas_comerciales').delete().eq('id', id)
+      if (error) alert("Error al eliminar: " + error.message)
+      else cargarOfertas()
+  }
+
+  const toggleActiva = async (oferta) => {
+      // Cambia el estado de activa/inactiva
+      const { error } = await supabase
+        .from('ofertas_comerciales')
+        .update({ activa: !oferta.activa })
+        .eq('id', oferta.id)
+
+      if (error) alert("Error al actualizar: " + error.message)
+      else cargarOfertas()
+  }
+
+  const formatearFecha = (f) => f ? f.split('-').reverse().join('/') : '-'
+
+  const styles = {
+    container: { padding: '20px', width: '100%', maxWidth: '1200px', margin: '0 auto' },
+    header: { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'30px', flexWrap: 'wrap', gap: '15px' },
+    title: { display:'flex', alignItems:'center', gap:'10px', fontSize:'1.8rem', fontWeight:'bold', color:'#1f2937', margin: 0 },
+    
+    btnNew: { 
+        backgroundColor:'#1f2937', color:'white', border:'none', padding:'10px 20px', 
+        borderRadius:'8px', cursor:'pointer', fontWeight:'bold', display:'flex', 
+        alignItems:'center', gap:'8px', fontSize: '0.95rem' 
+    },
+    
+    grid: { display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(320px, 1fr))', gap:'20px' },
+    
+    // Estilo Tarjeta
+    card: { 
+        backgroundColor:'white', padding:'20px', borderRadius:'12px', 
+        boxShadow:'0 2px 4px rgba(0,0,0,0.05)', border:'1px solid #e5e7eb', 
+        display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
+    },
+    cardHeader: { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'15px' },
+    cardTitle: { fontWeight:'bold', fontSize:'1.1rem', color:'#1f2937', margin:'0 0 5px 0' },
+    clientName: { fontSize:'0.9rem', color:'#4b5563', fontWeight: '500', margin: 0, display: 'flex', alignItems: 'center', gap: '5px' },
+    
+    // Badge de estado
+    statusBadge: (active) => ({ 
+        padding:'4px 10px', borderRadius:'20px', fontSize:'0.75rem', fontWeight:'bold', 
+        backgroundColor: active ? '#dcfce7' : '#f3f4f6', 
+        color: active ? '#166534' : '#9ca3af', 
+        display:'flex', alignItems:'center', gap:'5px', cursor:'pointer', border: '1px solid transparent',
+        borderColor: active ? '#bbf7d0' : '#e5e7eb'
+    }),
+
+    infoBlock: { marginTop: 'auto', paddingTop: '15px', borderTop: '1px dashed #f3f4f6' },
+    metaText: { fontSize:'0.85rem', color:'#6b7280', marginBottom: '5px' },
+
+    actions: { display:'flex', justifyContent:'flex-end', gap:'10px', marginTop: '10px' },
+    btnIcon: { border:'none', background:'none', cursor:'pointer', padding:'5px', borderRadius: '4px', transition: 'background 0.2s' }
+  }
+
+  return (
+    <div style={styles.container}>
+        <div style={styles.header}>
+            <h1 style={styles.title}><FileText color="#2563eb" size={32}/> Ofertas Comerciales</h1>
+            <button onClick={() => { setEditId(null); setModalOpen(true) }} style={styles.btnNew}>
+                <Plus size={18}/> Nueva Oferta / Cotización
+            </button>
+        </div>
+
+        {loading && <div style={{padding:'20px', color:'#9ca3af', textAlign:'center'}}>Cargando ofertas...</div>}
+
+        <div style={styles.grid}>
+            {!loading && ofertas.length === 0 && (
+                <div style={{gridColumn: '1 / -1', padding:'40px', textAlign:'center', border:'2px dashed #e5e7eb', borderRadius:'12px', color:'#9ca3af'}}>
+                    No hay cotizaciones registradas aún.
+                </div>
+            )}
+            
+            {ofertas.map(of => (
+                <div key={of.id} style={styles.card}>
+                    <div style={styles.cardHeader}>
+                        <div>
+                            <h3 style={styles.cardTitle}>{of.nombre}</h3>
+                            <p style={styles.clientName}>{of.clientes?.nombre || 'Sin Cliente'}</p>
+                        </div>
+                        
+                        <div 
+                            onClick={() => toggleActiva(of)} 
+                            style={styles.statusBadge(of.activa)} 
+                            title="Clic para activar/desactivar"
+                        >
+                            {of.activa ? <CheckCircle size={14}/> : <XCircle size={14}/>}
+                            {of.activa ? 'ACTIVA' : 'INACTIVA'}
+                        </div>
+                    </div>
+                    
+                    <div style={styles.infoBlock}>
+                        <div style={styles.metaText}>
+                            📅 Fecha: <strong>{formatearFecha(of.fecha)}</strong>
+                        </div>
+                        <div style={styles.metaText}>
+                            🥑 Calibres definidos: <strong>{of.precios_json?.length || 0}</strong>
+                        </div>
+
+                        <div style={styles.actions}>
+                            <button 
+                                onClick={() => { setEditId(of.id); setModalOpen(true) }} 
+                                style={{...styles.btnIcon, color:'#2563eb'}} 
+                                title="Editar"
+                            >
+                                <Pencil size={18}/>
+                            </button>
+                            <button 
+                                onClick={() => eliminarOferta(of.id)} 
+                                style={{...styles.btnIcon, color:'#ef4444'}} 
+                                title="Eliminar"
+                            >
+                                <Trash2 size={18}/>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        <Modal 
+            isOpen={modalOpen} 
+            onClose={handleClose} 
+            title={editId ? "Editar Cotización" : "Nueva Cotización"}
+        >
+            {modalOpen && (
+                <NuevaOferta 
+                    idOferta={editId}
+                    cerrarModal={() => setModalOpen(false)}
+                    alGuardar={() => { setModalOpen(false); cargarOfertas(); }}
+                />
+            )}
+        </Modal>
+    </div>
+  )
+}
+
+export default OfertasComerciales
+
+================================================================================
+FILE: src/pages/Gastos.jsx
+================================================================================
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { Link } from 'react-router-dom'
+import { Wallet, Plus, Trash2, Pencil, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import Modal from '../components/Modal'
+import NuevoGasto from './NuevoGasto'
+
+function Gastos() {
+  const [gastos, setGastos] = useState([]) // Lista de documentos (Padres)
+  const [cuotasPendientes, setCuotasPendientes] = useState([]) // Lista aplanada de cuotas POR PAGAR
+  const [cuotasPagadas, setCuotasPagadas] = useState([]) // Lista aplanada de cuotas YA PAGADAS
+  
+  const [filtro, setFiltro] = useState('Todos') // 'Todos', 'Pendiente', 'Pagado'
+
+  // --- ESTADO DEL MODAL ---
+  const [modalOpen, setModalOpen] = useState(false)
+  const [gastoEditarId, setGastoEditarId] = useState(null)
+
+  const formatearDinero = (monto) => '$ ' + Math.round(monto).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+  const formatearFecha = (f) => f ? f.split('-').reverse().join('/') : '-'
+
+  useEffect(() => {
+    leerGastos()
+  }, [])
+
+  // --- FUNCIONES DEL MODAL ---
+  const abrirModalCrear = () => {
+    setGastoEditarId(null)
+    setModalOpen(true)
+  }
+
+  const abrirModalEditar = (id) => {
+    setGastoEditarId(id)
+    setModalOpen(true)
+  }
+
+  // Intenta cerrar el modal (si el formulario tiene cambios, el formulario hijo preguntará)
+  const handleCloseRequest = () => {
+    if (window.intentarCerrarModal) {
+        window.intentarCerrarModal() 
+    } else {
+        setModalOpen(false)
+    }
+  }
+
+  const handleGuardadoExitoso = () => {
+    setModalOpen(false)
+    leerGastos() // Recargamos la lista para ver los cambios
+  }
+
+  // --- CARGA DE DATOS ---
+  async function leerGastos() {
+    // CONSULTA EXPANDIDA: Traemos parcelas y subcategorías también
+    const { data: dataDocs, error } = await supabase
+      .from('gastos')
+      .select(`
+        *,
+        proveedores ( nombre ),
+        categorias_gastos ( nombre ),
+        subcategorias_gastos ( nombre ),
+        parcelas ( nombre ),
+        pagos_gastos ( * ) 
+      `) 
+      .order('fecha', { ascending: false })
+      
+    if (!error) {
+      setGastos(dataDocs)
+      
+      let pendientes = []
+      let pagadas = []
+
+      dataDocs.forEach(doc => {
+         // Verificamos si tiene desglose de pagos (Hijos)
+         if (doc.pagos_gastos && doc.pagos_gastos.length > 0) {
+            
+            // A) Procesar PENDIENTES
+            const hijosPendientes = doc.pagos_gastos.filter(p => p.estado === 'Pendiente')
+            hijosPendientes.forEach(hijo => {
+               pendientes.push({
+                  tipo: 'cuota',
+                  id: hijo.id,
+                  padreId: doc.id,
+                  fecha: hijo.fecha_vencimiento,
+                  proveedor: doc.proveedores?.nombre,
+                  docInfo: `${doc.tipo_documento} ${doc.nro_documento}`,
+                  categoria: doc.categorias_gastos?.nombre,
+                  subcat: doc.subcategorias_gastos?.nombre,
+                  parcela: doc.parcelas?.nombre,
+                  detalle: `Cuota del ${formatearFecha(doc.fecha)} (${doc.descripcion})`,
+                  monto: hijo.monto
+               })
+            })
+
+            // B) Procesar PAGADAS
+            const hijosPagados = doc.pagos_gastos.filter(p => p.estado === 'Pagado')
+            hijosPagados.forEach(hijo => {
+               pagadas.push({
+                  tipo: 'cuota',
+                  id: hijo.id,
+                  padreId: doc.id,
+                  fecha: hijo.fecha_vencimiento,
+                  proveedor: doc.proveedores?.nombre,
+                  docInfo: `${doc.tipo_documento} ${doc.nro_documento}`,
+                  categoria: doc.categorias_gastos?.nombre,
+                  subcat: doc.subcategorias_gastos?.nombre,
+                  parcela: doc.parcelas?.nombre,
+                  detalle: `Cuota Pagada (${doc.descripcion})`,
+                  monto: hijo.monto
+               })
+            })
+
+         } else {
+            // Si NO tiene hijos (Gastos antiguos o simples)
+            const itemSimple = {
+               tipo: 'doc',
+               id: doc.id,
+               padreId: doc.id,
+               fecha: doc.fecha_vencimiento || doc.fecha,
+               proveedor: doc.proveedores?.nombre,
+               docInfo: `${doc.tipo_documento} ${doc.nro_documento || ''}`,
+               categoria: doc.categorias_gastos?.nombre,
+               subcat: doc.subcategorias_gastos?.nombre,
+               parcela: doc.parcelas?.nombre,
+               detalle: doc.descripcion,
+               monto: doc.monto
+            }
+
+            if (doc.estado_pago === 'Pendiente') {
+                pendientes.push(itemSimple)
+            } else if (doc.estado_pago === 'Pagado') {
+                pagadas.push(itemSimple)
+            }
+         }
+      })
+
+      // Ordenar
+      pendientes.sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
+      pagadas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+
+      setCuotasPendientes(pendientes)
+      setCuotasPagadas(pagadas)
+    }
+  }
+
+  const eliminarGasto = async (id) => {
+    if (confirm("¿Eliminar documento y sus pagos?")) {
+      await supabase.from('gastos').delete().eq('id', id)
+      leerGastos() 
+    }
+  }
+
+  const totalDeudaReal = cuotasPendientes.reduce((acc, item) => acc + Number(item.monto), 0)
+
+  // --- LOGICA DE RENDERIZADO (Filas de la tabla) ---
+  const renderContenido = () => {
+    
+    // CASO 1: VISTA DE PENDIENTES (ROJO)
+    if (filtro === 'Pendiente') {
+        if (cuotasPendientes.length === 0) return <tr><td colSpan="8" style={styles.empty}>¡Estás al día! No tienes cuentas por pagar.</td></tr>
+        
+        return cuotasPendientes.map((item) => (
+            <tr key={`${item.tipo}-${item.id}`} style={{backgroundColor:'#fef2f2'}}>
+                <td style={styles.td}>
+                    <div style={{color:'#dc2626', fontWeight:'bold'}}>{formatearFecha(item.fecha)}</div>
+                    <div style={{fontSize:'0.75rem', color:'#ef4444'}}>Vencimiento</div>
+                </td>
+                <td style={styles.td}>
+                    <div style={{fontSize:'0.85rem', color:'#6b7280'}}>{item.docInfo}</div>
+                </td>
+                <td style={styles.td}><strong>{item.proveedor}</strong></td>
+                <td style={styles.td}><span style={{fontSize:'0.85rem', color:'#4b5563'}}>{item.parcela || '-'}</span></td>
+                <td style={styles.td}>
+                    <span style={styles.badgeCat}>{item.categoria}</span>
+                    <div style={{fontSize:'0.75rem', color:'#6b7280', marginTop:'2px'}}>{item.subcat}</div>
+                </td>
+                <td style={styles.td}>{item.detalle}</td>
+                <td style={{...styles.td, color:'#dc2626', fontWeight:'bold'}}>{formatearDinero(item.monto)}</td>
+                <td style={styles.td}>
+                    <button onClick={() => abrirModalEditar(item.padreId)} style={{border:'none', background:'none', color:'#2563eb', cursor:'pointer'}}>
+                        <Pencil size={18} />
+                    </button>
+                </td>
+            </tr>
+        ))
+    }
+
+    // CASO 2: VISTA DE PAGADOS (VERDE)
+    if (filtro === 'Pagado') {
+        if (cuotasPagadas.length === 0) return <tr><td colSpan="8" style={styles.empty}>No hay historial de pagos registrados.</td></tr>
+
+        return cuotasPagadas.map((item) => (
+            <tr key={`${item.tipo}-${item.id}`} style={{backgroundColor:'#f0fdf4'}}>
+                <td style={styles.td}>
+                    <div style={{color:'#166534', fontWeight:'bold'}}>{formatearFecha(item.fecha)}</div>
+                    <div style={{fontSize:'0.75rem', color:'#15803d'}}>Fecha Pago</div>
+                </td>
+                <td style={styles.td}>
+                    <div style={{fontSize:'0.85rem', color:'#6b7280'}}>{item.docInfo}</div>
+                </td>
+                <td style={styles.td}><strong>{item.proveedor}</strong></td>
+                <td style={styles.td}><span style={{fontSize:'0.85rem', color:'#4b5563'}}>{item.parcela || '-'}</span></td>
+                <td style={styles.td}>
+                    <span style={styles.badgeCat}>{item.categoria}</span>
+                    <div style={{fontSize:'0.75rem', color:'#6b7280', marginTop:'2px'}}>{item.subcat}</div>
+                </td>
+                <td style={styles.td}>{item.detalle}</td>
+                <td style={{...styles.td, color:'#166534', fontWeight:'bold'}}>{formatearDinero(item.monto)}</td>
+                <td style={styles.td}>
+                    <button onClick={() => abrirModalEditar(item.padreId)} style={{border:'none', background:'none', color:'#2563eb', cursor:'pointer'}}>
+                        <Pencil size={18} />
+                    </button>
+                </td>
+            </tr>
+        ))
+    }
+
+    // CASO 3: VISTA DOCUMENTOS (FACTURAS GENERALES - VISTA COMPLETA)
+    if (gastos.length === 0) return <tr><td colSpan="8" style={styles.empty}>No hay documentos registrados.</td></tr>
+
+    return gastos.map((g) => (
+        <tr key={g.id}>
+            <td style={styles.td}>
+                <div>{formatearFecha(g.fecha)}</div>
+                <span style={styles.badgePago(g.estado_pago)}>
+                    {g.estado_pago === 'Pagado' ? <CheckCircle size={12}/> : <Clock size={12}/>}
+                    {g.estado_pago}
+                </span>
+            </td>
+            {/* Columna DOC separada */}
+            <td style={styles.td}>
+                <div style={{fontSize:'0.85rem', fontWeight:'bold'}}>{g.tipo_documento}</div>
+                <div style={{fontSize:'0.85rem', color:'#374151'}}>{g.nro_documento}</div>
+            </td>
+            <td style={styles.td}><strong>{g.proveedores?.nombre}</strong></td>
+            {/* Columna PARCELA */}
+            <td style={styles.td}>{g.parcelas?.nombre || '-'}</td>
+            {/* Columna CATEGORIA/SUBCATEGORIA */}
+            <td style={styles.td}>
+                <div>{g.categorias_gastos?.nombre}</div>
+                <div style={{fontSize:'0.75rem', color:'#6b7280'}}>{g.subcategorias_gastos?.nombre}</div>
+            </td>
+            <td style={styles.td}>{g.descripcion}</td>
+            <td style={{...styles.td, fontWeight:'bold'}}>{formatearDinero(g.monto)}</td>
+            <td style={styles.td}>
+                <div style={{display:'flex', gap:'10px'}}>
+                  <button onClick={() => abrirModalEditar(g.id)} style={{border:'none', background:'none', color:'#2563eb', cursor:'pointer'}}>
+                      <Pencil size={18} />
+                  </button>
+                  <button onClick={() => eliminarGasto(g.id)} style={styles.btnIcon}><Trash2 size={18} /></button>
+                </div>
+            </td>
+        </tr>
+    ))
+  }
+
+  const styles = {
+    container: { padding: '20px', width: '90%' },
+    header: { display: 'flex', justifyContent: 'flex-start', gap: '20px', alignItems: 'center', marginBottom: '20px' },
+    title: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' },
+    
+    btnNew: { 
+        textDecoration: 'none', backgroundColor: '#1f2937', color: 'white', padding: '10px 20px', 
+        borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', 
+        fontWeight: 'bold', fontSize: '0.9rem', border: 'none', cursor: 'pointer' 
+    },
+    
+    summaryCard: { backgroundColor: '#fee2e2', color: '#991b1b', padding: '15px 20px', borderRadius: '12px', marginBottom: '30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #fecaca' },
+    
+    tabs: { display: 'flex', gap: '10px', marginBottom: '20px' },
+    tab: (active) => ({
+      padding: '8px 16px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem',
+      backgroundColor: active ? '#1f2937' : '#e5e7eb', color: active ? 'white' : '#4b5563'
+    }),
+
+    tableContainer: { backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflowX: 'auto' },
+    table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth:'900px' },
+    th: { backgroundColor: '#f9fafb', padding: '12px', fontSize: '0.8rem', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', whiteSpace:'nowrap' },
+    td: { padding: '12px', borderBottom: '1px solid #f3f4f6', color: '#374151', fontSize: '0.9rem' },
+    empty: { textAlign:'center', padding:'40px', color:'#9ca3af', fontStyle:'italic' },
+    
+    badgePago: (estado) => ({
+      display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', marginTop:'4px',
+      backgroundColor: estado === 'Pagado' ? '#dcfce7' : (estado === 'Parcial' ? '#fef9c3' : '#fee2e2'),
+      color: estado === 'Pagado' ? '#166534' : (estado === 'Parcial' ? '#854d0e' : '#991b1b')
+    }),
+    badgeCat: { display: 'inline-block', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', backgroundColor: '#f3f4f6', color: '#4b5563' },
+    btnIcon: { border:'none', background:'none', color:'#ef4444', cursor:'pointer' }
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}><Wallet color="#4b5563" /> Gastos</h1>
+        {/* BOTÓN PRINCIPAL ABRE MODAL */}
+        <button onClick={abrirModalCrear} style={styles.btnNew}><Plus size={18} /> Nuevo Gasto</button>
+      </div>
+
+      {totalDeudaReal > 0 && (
+        <div style={styles.summaryCard}>
+          <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+             <AlertCircle size={24} />
+             <div>
+               <div style={{fontWeight:'bold', fontSize:'1.1rem'}}>Total Por Pagar</div>
+               <div style={{fontSize:'0.9rem'}}>Suma de cuotas pendientes</div>
+             </div>
+          </div>
+          <div style={{fontSize:'1.5rem', fontWeight:'bold'}}>{formatearDinero(totalDeudaReal)}</div>
+        </div>
+      )}
+
+      <div style={styles.tabs}>
+        <button onClick={() => setFiltro('Todos')} style={styles.tab(filtro === 'Todos')}>Documentos</button>
+        <button onClick={() => setFiltro('Pendiente')} style={styles.tab(filtro === 'Pendiente')}>Por Pagar ⏳</button>
+        <button onClick={() => setFiltro('Pagado')} style={styles.tab(filtro === 'Pagado')}>Pagados ✅</button>
+      </div>
+
+      <div style={styles.tableContainer}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Fecha</th>
+              <th style={styles.th}>Doc.</th>
+              <th style={styles.th}>Proveedor</th>
+              <th style={styles.th}>Parcela</th>
+              <th style={styles.th}>Categoría / Sub</th>
+              <th style={styles.th}>Detalle</th>
+              <th style={styles.th}>Monto</th>
+              <th style={styles.th} width="50"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {renderContenido()}
+          </tbody>
+        </table>
+      </div>
+
+      {/* --- AQUÍ VIVE EL MODAL --- */}
+      <Modal 
+        isOpen={modalOpen} 
+        onClose={handleCloseRequest} 
+        title={gastoEditarId ? "Editar Gasto" : "Registrar Nuevo Gasto"}
+      >
+        {modalOpen && (
+            <NuevoGasto 
+                idGasto={gastoEditarId} 
+                cerrarModal={() => setModalOpen(false)} 
+                alGuardar={handleGuardadoExitoso}
+            />
+        )}
+      </Modal>
+
+    </div>
+  )
+}
+export default Gastos
+
+
+================================================================================
+FILE: src/pages/CuentasSocios.jsx
+================================================================================
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { Link } from 'react-router-dom'
+import { ArrowRightLeft, Calendar, Plus, Trash2, Pencil } from 'lucide-react' // <--- Import Trash2
+
+function CuentasSocios() {
+  const [movimientos, setMovimientos] = useState([])
+
+  const formatearDinero = (monto) => {
+    return '$ ' + Math.round(monto).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  const formatearFecha = (fechaString) => {
+    if (!fechaString) return '-';
+    const [anio, mes, dia] = fechaString.split('-');
+    return `${dia}/${mes}/${anio}`;
+  }
+
+  useEffect(() => {
+    leerMovimientos()
+  }, [])
+
+  async function leerMovimientos() {
+    const { data, error } = await supabase
+      .from('movimientos_billetera')
+      .select('*, socios(nombre)')
+      .order('fecha', { ascending: false })
+    
+    if (error) console.log(error)
+    else setMovimientos(data)
+  }
+
+  // --- FUNCIÓN ELIMINAR ---
+  const eliminarMovimiento = async (id) => {
+    if (!confirm("¿Borrar este movimiento? Se recalculará el saldo del socio.")) return;
+
+    const { error } = await supabase
+      .from('movimientos_billetera')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      alert('Error: ' + error.message)
+    } else {
+      setMovimientos(prev => prev.filter(m => m.id !== id))
+    }
+  }
+
+  const styles = {
+    container: { padding: '20px' },
+    header: { display: 'flex', justifyContent: 'flex-start', gap: '20px', alignItems: 'center', marginBottom: '30px' },
+    title: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' },
+    btnNew: { textDecoration: 'none', backgroundColor: '#2563eb', color: 'white', padding: '10px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '0.9rem' },
+    tableContainer: { backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflow: 'hidden' },
+    table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left' },
+    th: { backgroundColor: '#f9fafb', padding: '16px', fontSize: '0.85rem', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase' },
+    td: { padding: '16px', borderBottom: '1px solid #f3f4f6', color: '#374151' },
+    badgeIngreso: { backgroundColor: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' },
+    badgeEgreso: { backgroundColor: '#fee2e2', color: '#991b1b', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' },
+    btnDelete: { background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '8px' }
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}>
+          <ArrowRightLeft color="#2563eb" /> Cuentas Corrientes
+        </h1>
+        <Link to="/cuentas-socios/nuevo" style={styles.btnNew}>
+          <Plus size={18} /> Registrar Movimiento
+        </Link>
+      </div>
+
+      <div style={styles.tableContainer}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Fecha</th>
+              <th style={styles.th}>Socio</th>
+              <th style={styles.th}>Concepto</th>
+              <th style={styles.th}>Monto</th>
+              <th style={styles.th} width="50"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {movimientos.map((mov) => (
+              <tr key={mov.id}>
+                <td style={styles.td}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Calendar size={14} color="#9ca3af" />
+                    {formatearFecha(mov.fecha)}
+                  </div>
+                </td>
+                <td style={styles.td}>
+                  <strong>{mov.socios?.nombre}</strong>
+                </td>
+                <td style={styles.td}>
+                   <span style={mov.monto >= 0 ? styles.badgeIngreso : styles.badgeEgreso}>
+                     {mov.tipo}
+                   </span>
+                   <div style={{fontSize: '0.85rem', color: '#6b7280', marginTop: '4px'}}>{mov.descripcion}</div>
+                </td>
+                <td style={{ ...styles.td, fontWeight: 'bold', color: mov.monto >= 0 ? '#16a34a' : '#dc2626' }}>
+                  {formatearDinero(mov.monto)}
+                </td>
+                <td style={styles.td}>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    {/* Botón Editar */}
+                    <Link to={`/cuentas-socios/editar/${mov.id}`} style={{ color: '#2563eb' }} title="Editar">
+                      <Pencil size={18} />
+                    </Link>
+
+                    {/* Botón Eliminar (Ya lo tenías) */}
+                    <button 
+                      style={styles.btnDelete}
+                      onClick={() => eliminarMovimiento(mov.id)}
+                      title="Eliminar movimiento"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            
+            {movimientos.length === 0 && (
+              <tr>
+                <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>
+                  No hay movimientos registrados.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+export default CuentasSocios
+
+
+================================================================================
+FILE: src/pages/Bitacora.jsx
+================================================================================
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { StickyNote, Plus, Trash2, CheckCircle, AlertCircle, Lightbulb, Clock } from 'lucide-react'
+import Modal from '../components/Modal'
+
+function Bitacora() {
+  const [notas, setNotas] = useState([])
+  const [filtro, setFiltro] = useState('Pendiente') // Pendiente | Realizado
+  const [modalOpen, setModalOpen] = useState(false)
+  
+  // Estado formulario
+  const [nuevaNota, setNuevaNota] = useState({ titulo: '', contenido: '', tipo: 'Nota', importante: false })
+
+  useEffect(() => { cargarNotas() }, [filtro])
+
+  async function cargarNotas() {
+    let query = supabase.from('bitacora').select('*').order('created_at', { ascending: false })
+    
+    // Si filtro es Pendiente, traemos todo lo que NO esté archivado ni realizado (o ajusta según gusto)
+    if (filtro === 'Pendiente') query = query.neq('estado', 'Realizado')
+    else query = query.eq('estado', 'Realizado')
+
+    const { data } = await query
+    setNotas(data || [])
+  }
+
+  const guardarNota = async (e) => {
+      e.preventDefault()
+      if (!nuevaNota.contenido) return alert("Escribe algo...")
+      
+      const { error } = await supabase.from('bitacora').insert([nuevaNota])
+      if (error) alert(error.message)
+      else {
+          setModalOpen(false)
+          setNuevaNota({ titulo: '', contenido: '', tipo: 'Nota', importante: false })
+          cargarNotas()
+      }
+  }
+
+  const cambiarEstado = async (id, nuevoEstado) => {
+      await supabase.from('bitacora').update({ estado: nuevoEstado }).eq('id', id)
+      cargarNotas()
+  }
+
+  const eliminarNota = async (id) => {
+      if(!confirm("¿Borrar nota?")) return
+      await supabase.from('bitacora').delete().eq('id', id)
+      cargarNotas()
+  }
+
+  // Iconos según tipo
+  const getIcon = (tipo) => {
+      if (tipo === 'Idea') return <Lightbulb size={20} color="#eab308"/>
+      if (tipo === 'Alerta') return <AlertCircle size={20} color="#ef4444"/>
+      if (tipo === 'Tarea') return <CheckCircle size={20} color="#3b82f6"/>
+      return <StickyNote size={20} color="#6b7280"/>
+  }
+
+  const styles = {
+      container: { padding: '20px', width: '100%' },
+      header: { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' },
+      title: { fontSize: '1.8rem', fontWeight: 'bold', color: '#1f2937', display:'flex', gap:'10px' },
+      
+      tabs: { display:'flex', gap:'10px', marginBottom:'20px' },
+      tab: (active) => ({ padding:'8px 16px', borderRadius:'20px', border:'none', cursor:'pointer', fontWeight:'bold', backgroundColor: active ? '#1f2937' : '#e5e7eb', color: active ? 'white' : '#4b5563' }),
+      
+      grid: { display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'20px' },
+      card: (importante) => ({ backgroundColor: importante ? '#fef3c7' : 'white', borderRadius:'12px', padding:'20px', boxShadow:'0 4px 6px rgba(0,0,0,0.05)', border: importante ? '1px solid #fcd34d' : '1px solid #e5e7eb', display:'flex', flexDirection:'column', gap:'10px', position:'relative' }),
+      
+      cardHeader: { display:'flex', justifyContent:'space-between', alignItems:'flex-start' },
+      cardTitle: { fontWeight:'bold', fontSize:'1.1rem', color:'#1f2937', margin:0 },
+      cardDate: { fontSize:'0.75rem', color:'#6b7280', display:'flex', alignItems:'center', gap:'4px' },
+      
+      actions: { display:'flex', justifyContent:'flex-end', gap:'10px', marginTop:'10px', paddingTop:'10px', borderTop:'1px dashed #d1d5db' },
+      btnAction: { background:'none', border:'none', cursor:'pointer', color:'#6b7280', padding:'5px' },
+
+      // Form Styles
+      form: { display:'flex', flexDirection:'column', gap:'15px' },
+      input: { padding:'10px', borderRadius:'8px', border:'1px solid #d1d5db', width:'100%', boxSizing:'border-box' },
+      textarea: { padding:'10px', borderRadius:'8px', border:'1px solid #d1d5db', width:'100%', minHeight:'100px', fontFamily:'inherit', boxSizing:'border-box' },
+      select: { padding:'10px', borderRadius:'8px', border:'1px solid #d1d5db', width:'100%' },
+      btnSave: { padding:'12px', backgroundColor:'#1f2937', color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer' }
+  }
+
+  return (
+    <div style={styles.container}>
+        <div style={styles.header}>
+            <h1 style={styles.title}><StickyNote color="#d97706"/> Bitácora de Campo</h1>
+            <button onClick={() => setModalOpen(true)} style={{backgroundColor:'#d97706', color:'white', border:'none', padding:'10px 20px', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px'}}>
+                <Plus size={18}/> Nueva Nota
+            </button>
+        </div>
+
+        <div style={styles.tabs}>
+            <button style={styles.tab(filtro === 'Pendiente')} onClick={() => setFiltro('Pendiente')}>Activas / Pendientes</button>
+            <button style={styles.tab(filtro === 'Realizado')} onClick={() => setFiltro('Realizado')}>Historial / Realizadas</button>
+        </div>
+
+        <div style={styles.grid}>
+            {notas.length === 0 && <div style={{color:'#9ca3af', gridColumn:'1/-1', textAlign:'center', padding:'40px'}}>No hay notas en esta vista.</div>}
+            
+            {notas.map(n => (
+                <div key={n.id} style={styles.card(n.importante)}>
+                    <div style={styles.cardHeader}>
+                        <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+                            {getIcon(n.tipo)}
+                            <h3 style={styles.cardTitle}>{n.titulo || 'Nota sin título'}</h3>
+                        </div>
+                        {n.importante && <AlertCircle size={16} color="#d97706" title="Importante"/>}
+                    </div>
+                    
+                    <p style={{margin:0, color:'#374151', whiteSpace:'pre-wrap', fontSize:'0.95rem'}}>{n.contenido}</p>
+                    
+                    <div style={styles.cardDate}>
+                        <Clock size={12}/> {n.fecha}
+                    </div>
+
+                    <div style={styles.actions}>
+                        <button onClick={() => eliminarNota(n.id)} style={{...styles.btnAction, color:'#ef4444'}} title="Borrar"><Trash2 size={18}/></button>
+                        
+                        {filtro === 'Pendiente' ? (
+                             <button onClick={() => cambiarEstado(n.id, 'Realizado')} style={{...styles.btnAction, color:'#16a34a'}} title="Marcar Realizado"><CheckCircle size={18}/></button>
+                        ) : (
+                             <button onClick={() => cambiarEstado(n.id, 'Pendiente')} style={{...styles.btnAction, color:'#d97706'}} title="Volver a Pendiente"><Clock size={18}/></button>
+                        )}
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Agregar a Bitácora">
+            <form onSubmit={guardarNota} style={styles.form}>
+                <input 
+                    placeholder="Título (Opcional)" 
+                    value={nuevaNota.titulo} 
+                    onChange={e => setNuevaNota({...nuevaNota, titulo: e.target.value})} 
+                    style={styles.input}
+                />
+                <textarea 
+                    placeholder="Escribe tu idea, tarea u observación..." 
+                    value={nuevaNota.contenido} 
+                    onChange={e => setNuevaNota({...nuevaNota, contenido: e.target.value})} 
+                    style={styles.textarea}
+                    required
+                />
+                <div style={{display:'flex', gap:'10px'}}>
+                    <select 
+                        value={nuevaNota.tipo} 
+                        onChange={e => setNuevaNota({...nuevaNota, tipo: e.target.value})} 
+                        style={styles.select}
+                    >
+                        <option value="Nota">Nota General</option>
+                        <option value="Idea">Idea / Proyecto</option>
+                        <option value="Tarea">Tarea Pendiente</option>
+                        <option value="Alerta">Alerta / Problema</option>
+                    </select>
+                    <label style={{display:'flex', alignItems:'center', gap:'5px', padding:'0 10px', border:'1px solid #d1d5db', borderRadius:'8px', cursor:'pointer', backgroundColor:'white'}}>
+                        <input 
+                            type="checkbox" 
+                            checked={nuevaNota.importante} 
+                            onChange={e => setNuevaNota({...nuevaNota, importante: e.target.checked})} 
+                        />
+                        <span style={{fontSize:'0.9rem'}}>¡Importante!</span>
+                    </label>
+                </div>
+                <button type="submit" style={styles.btnSave}>Guardar Nota</button>
+            </form>
+        </Modal>
+    </div>
+  )
+}
+export default Bitacora
+
+
+================================================================================
+FILE: src/pages/Clientes.jsx
+================================================================================
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { Briefcase, Plus, Pencil, Trash2, Phone, Mail } from 'lucide-react'
+// Importamos Modal y el Formulario (que antes era una página)
+import Modal from '../components/Modal' 
+import NuevoCliente from './NuevoCliente' 
+
+function Clientes() {
+  const [clientes, setClientes] = useState([])
+  // Estados para el modal
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editId, setEditId] = useState(null)
+
+  useEffect(() => { leerClientes() }, [])
+
+  async function leerClientes() {
+    const { data } = await supabase.from('clientes').select('*').order('nombre')
+    setClientes(data || [])
+  }
+
+  // Funciones para abrir modal
+  const abrirCrear = () => { setEditId(null); setModalOpen(true); }
+  const abrirEditar = (id) => { setEditId(id); setModalOpen(true); }
+  
+  // Función segura para cerrar
+  const cerrarModal = () => {
+      if (window.intentarCerrarModal) window.intentarCerrarModal()
+      else setModalOpen(false)
+  }
+
+  const eliminarCliente = async (id) => {
+    if (!confirm("¿Eliminar cliente?")) return;
+    const { error } = await supabase.from('clientes').delete().eq('id', id)
+    if (error) alert("Error: " + error.message)
+    else leerClientes()
+  }
+
+  const styles = {
+     /* ... tus estilos existentes ... */
+     container: { padding: '20px', width: '100%' },
+     header: { display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '30px' },
+     title: { fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', display:'flex', gap:'10px' },
+     // Cambiamos estilo de Link a Button
+     btnNew: { border:'none', cursor:'pointer', backgroundColor: '#059669', color: 'white', padding: '10px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '0.9rem' },
+     grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }
+     /* ... resto de estilos ... */
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}><Briefcase color="#059669" /> Cartera de Clientes</h1>
+        {/* Ahora es un botón que abre modal */}
+        <button onClick={abrirCrear} style={styles.btnNew}><Plus size={18} /> Nuevo Cliente</button>
+      </div>
+
+      <div style={styles.grid}>
+        {clientes.map((cliente) => (
+          <div key={cliente.id} style={{backgroundColor:'white', padding:'20px', borderRadius:'12px', boxShadow:'0 2px 4px rgba(0,0,0,0.05)', position:'relative'}}>
+            {/* ... renderizado de tarjeta igual que antes ... */}
+            <h3 style={{margin:0}}>{cliente.nombre}</h3>
+            <div style={{fontSize:'0.9rem', color:'#6b7280'}}>{cliente.tipo}</div>
+            
+            <div style={{position:'absolute', top:'20px', right:'20px', display:'flex', gap:'10px'}}>
+              {/* Botón Editar ahora abre modal */}
+              <button onClick={() => abrirEditar(cliente.id)} style={{border:'none', background:'none', color:'#2563eb', cursor:'pointer'}}><Pencil size={20}/></button>
+              <button onClick={() => eliminarCliente(cliente.id)} style={{border:'none', background:'none', color:'#ef4444', cursor:'pointer'}}><Trash2 size={20}/></button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* COMPONENTE MODAL GENÉRICO */}
+      <Modal 
+        isOpen={modalOpen} 
+        onClose={cerrarModal} 
+        title={editId ? "Editar Cliente" : "Nuevo Cliente"}
+      >
+          {/* Renderizamos el formulario SOLO si el modal está abierto */}
+          {modalOpen && (
+            <NuevoCliente 
+                // Necesitas adaptar NuevoCliente.jsx para recibir props en vez de usar useParams
+                idCliente={editId} 
+                cerrarModal={() => setModalOpen(false)}
+                alGuardar={() => { setModalOpen(false); leerClientes(); }}
+            />
+          )}
+      </Modal>
+    </div>
+  )
+}
+
+export default Clientes
+
+
+================================================================================
+FILE: src/pages/Proveedores.jsx
+================================================================================
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { Truck, Plus, Pencil, Trash2 } from 'lucide-react'
+import Modal from '../components/Modal'
+import NuevoProveedor from './NuevoProveedor'
+
+function Proveedores() {
+  const [list, setList] = useState([])
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editId, setEditId] = useState(null)
+
+  useEffect(() => {
+    leerDatos()
+  }, [])
+
+  function leerDatos() {
+    supabase.from('proveedores').select('*').order('nombre').then(({ data }) => setList(data || []))
+  }
+
+  const abrirCrear = () => { setEditId(null); setModalOpen(true); }
+  const abrirEditar = (id) => { setEditId(id); setModalOpen(true); }
+  
+  const cerrarModal = () => {
+    if (window.intentarCerrarModal) window.intentarCerrarModal()
+    else setModalOpen(false)
+  }
+
+  const eliminar = async (id) => {
+    if (!confirm("¿Eliminar proveedor?")) return
+    const { error } = await supabase.from('proveedores').delete().eq('id', id)
+    if (error) alert('No se puede eliminar: tiene gastos asociados.')
+    else setList(prev => prev.filter(x => x.id !== id))
+  }
+
+  const styles = {
+    container: { padding: '20px', width: '100%' },
+    header: { display: 'flex', justifyContent: 'flex-start', gap: '20px', alignItems: 'center', marginBottom: '30px' },
+    title: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' },
+    btnNew: { border:'none', cursor:'pointer', backgroundColor: '#059669', color: 'white', padding: '10px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '0.9rem' },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' },
+    card: { backgroundColor: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6', position: 'relative' },
+    actions: { position: 'absolute', top: '20px', right: '20px', display: 'flex', gap: '10px' }
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}><Truck color="#059669" /> Proveedores</h1>
+        <button onClick={abrirCrear} style={styles.btnNew}><Plus size={18} /> Nuevo</button>
+      </div>
+      <div style={styles.grid}>
+        {list.map((p) => (
+          <div key={p.id} style={styles.card}>
+            <h3 style={{ margin: '0 0 5px 0', color: '#1f2937' }}>{p.nombre}</h3>
+            {p.rut && <p style={{ margin: 0, color: '#6b7280', fontSize:'0.9rem' }}>{p.rut}</p>}
+            <div style={styles.actions}>
+              <button onClick={() => abrirEditar(p.id)} style={{ border:'none', background:'none', color: '#2563eb', cursor:'pointer' }}><Pencil size={20} /></button>
+              <button onClick={() => eliminar(p.id)} style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={20} /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Modal isOpen={modalOpen} onClose={cerrarModal} title={editId ? "Editar Proveedor" : "Nuevo Proveedor"}>
+          {modalOpen && (
+             <NuevoProveedor 
+                idProveedor={editId} 
+                cerrarModal={() => setModalOpen(false)} 
+                alGuardar={() => { setModalOpen(false); leerDatos(); }} 
+             />
+          )}
+      </Modal>
+    </div>
+  )
+}
+export default Proveedores
+
+
+================================================================================
+FILE: src/pages/Categorias.jsx
+================================================================================
+
+import { useState, useEffect } from 'react'
+import { supabase } from '../supabaseClient'
+import { Plus, Trash2, Folder, CornerDownRight } from 'lucide-react'
+
+function Categorias() {
+  const [categorias, setCategorias] = useState([])
+  const [subcategorias, setSubcategorias] = useState([])
+  const [catSeleccionada, setCatSeleccionada] = useState(null)
+  
+  const [loading, setLoading] = useState(false)
+  const [nuevaCat, setNuevaCat] = useState('')
+  const [nuevaSub, setNuevaSub] = useState('')
+
+  useEffect(() => {
+    cargarCategorias()
+  }, [])
+
+  useEffect(() => {
+    if (catSeleccionada) cargarSubcategorias(catSeleccionada.id)
+    else setSubcategorias([])
+  }, [catSeleccionada])
+
+  async function cargarCategorias() {
+    const { data } = await supabase.from('categorias_gastos').select('*').order('nombre')
+    setCategorias(data || [])
+  }
+
+  async function cargarSubcategorias(catId) {
+    const { data } = await supabase
+        .from('subcategorias_gastos')
+        .select('*')
+        .eq('categoria_id', catId)
+        .order('nombre')
+    setSubcategorias(data || [])
+  }
+
+  // --- LOGICA CATEGORIAS ---
+  async function agregarCategoria(e) {
+    e.preventDefault()
+    if (!nuevaCat.trim()) return
+    setLoading(true)
+    const { error } = await supabase.from('categorias_gastos').insert([{ nombre: nuevaCat }])
+    if (!error) {
+        setNuevaCat('')
+        cargarCategorias()
+    }
+    setLoading(false)
+  }
+
+  async function borrarCategoria(id) {
+    if (!confirm('Al borrar una categoría se pueden perder las subcategorías asociadas. ¿Continuar?')) return
+    await supabase.from('categorias_gastos').delete().eq('id', id)
+    cargarCategorias()
+    if (catSeleccionada?.id === id) setCatSeleccionada(null)
+  }
+
+  // --- LOGICA SUBCATEGORIAS ---
+  async function agregarSubcategoria(e) {
+    e.preventDefault()
+    if (!nuevaSub.trim() || !catSeleccionada) return
+    setLoading(true)
+    const { error } = await supabase.from('subcategorias_gastos').insert([{ 
+        nombre: nuevaSub, 
+        categoria_id: catSeleccionada.id 
+    }])
+    if (!error) {
+        setNuevaSub('')
+        cargarSubcategorias(catSeleccionada.id)
+    }
+    setLoading(false)
+  }
+
+  async function borrarSubcategoria(id) {
+    if (!confirm('¿Borrar subcategoría?')) return
+    await supabase.from('subcategorias_gastos').delete().eq('id', id)
+    if (catSeleccionada) cargarSubcategorias(catSeleccionada.id)
+  }
+
+  const styles = {
+    container: { maxWidth: '1000px', margin: '0 auto', display: 'flex', gap: '30px', height: 'calc(100vh - 100px)' },
+    column: { flex: 1, backgroundColor: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' },
+    header: { borderBottom: '1px solid #e5e7eb', paddingBottom: '15px', marginBottom: '15px' },
+    title: { margin: 0, color: '#111827', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '10px' },
+    list: { flex: 1, overflowY: 'auto', listStyle: 'none', padding: 0, margin: 0 },
+    item: (isActive) => ({
+        padding: '12px', margin: '5px 0', borderRadius: '8px', cursor: 'pointer',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        backgroundColor: isActive ? '#eff6ff' : 'transparent',
+        border: isActive ? '1px solid #bfdbfe' : '1px solid transparent',
+        color: isActive ? '#1d4ed8' : '#374151'
+    }),
+    form: { display: 'flex', gap: '10px', marginTop: '15px' },
+    input: { flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #d1d5db' },
+    btn: { backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', padding: '0 15px', cursor: 'pointer' },
+    emptyState: { textAlign: 'center', color: '#9ca3af', marginTop: '50px' }
+  }
+
+  return (
+    <div style={styles.container}>
+      {/* COLUMNA IZQUIERDA: CATEGORIAS */}
+      <div style={styles.column}>
+        <div style={styles.header}>
+            <h2 style={styles.title}><Folder size={20}/> Categorías</h2>
+        </div>
+        <ul style={styles.list}>
+            {categorias.map(cat => (
+                <li 
+                    key={cat.id} 
+                    style={styles.item(catSeleccionada?.id === cat.id)}
+                    onClick={() => setCatSeleccionada(cat)}
+                >
+                    <span>{cat.nombre}</span>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); borrarCategoria(cat.id); }}
+                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                </li>
+            ))}
+        </ul>
+        <form style={styles.form} onSubmit={agregarCategoria}>
+            <input 
+                placeholder="Nueva Categoría..." 
+                value={nuevaCat} 
+                onChange={e => setNuevaCat(e.target.value)}
+                style={styles.input}
+            />
+            <button type="submit" style={styles.btn} disabled={loading}><Plus size={20}/></button>
+        </form>
+      </div>
+
+      {/* COLUMNA DERECHA: SUBCATEGORIAS */}
+      <div style={styles.column}>
+        <div style={styles.header}>
+            <h2 style={styles.title}>
+                <CornerDownRight size={20}/> 
+                {catSeleccionada ? `Subcategorías de "${catSeleccionada.nombre}"` : 'Selecciona una categoría'}
+            </h2>
+        </div>
+        
+        {catSeleccionada ? (
+            <>
+                <ul style={styles.list}>
+                    {subcategorias.length === 0 && <p style={styles.emptyState}>No hay subcategorías definidas.</p>}
+                    {subcategorias.map(sub => (
+                        <li key={sub.id} style={styles.item(false)}>
+                            <span>{sub.nombre}</span>
+                            <button 
+                                onClick={() => borrarSubcategoria(sub.id)}
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+                <form style={styles.form} onSubmit={agregarSubcategoria}>
+                    <input 
+                        placeholder="Nueva Subcategoría..." 
+                        value={nuevaSub} 
+                        onChange={e => setNuevaSub(e.target.value)}
+                        style={styles.input}
+                    />
+                    <button type="submit" style={styles.btn} disabled={loading}><Plus size={20}/></button>
+                </form>
+            </>
+        ) : (
+            <div style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'#9ca3af', textAlign:'center'}}>
+                <p>Haz clic en una categoría de la izquierda<br/>para gestionar sus opciones.</p>
+            </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default Categorias
+
+================================================================================
+FILE: src/pages/ConfiguracionCampo.jsx
+================================================================================
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { Link } from 'react-router-dom'
+import { MapPin, Map, Plus, Pencil, Trash2, Maximize } from 'lucide-react'
+import Modal from '../components/Modal'
+import NuevaParcela from './NuevaParcela'
+import NuevoSector from './NuevoSector'
+
+function ConfiguracionCampo() {
+  const [arbol, setArbol] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  // ESTADOS MODALES
+  const [modalParcelaOpen, setModalParcelaOpen] = useState(false)
+  const [modalSectorOpen, setModalSectorOpen] = useState(false)
+  
+  const [editParcelaId, setEditParcelaId] = useState(null)
+  const [editSectorId, setEditSectorId] = useState(null)
+
+  useEffect(() => {
+    cargarDatos()
+  }, [])
+
+  async function cargarDatos() {
+    try {
+      const { data: parcelas } = await supabase.from('parcelas').select('*').order('nombre')
+      const { data: sectores } = await supabase.from('sectores').select('*').order('nombre')
+
+      if (parcelas && sectores) {
+        // Armamos la estructura y CALCULAMOS la superficie productiva sumando sectores
+        const estructura = parcelas.map(p => {
+            const misSectores = sectores.filter(s => s.parcela_id === p.id)
+            const superficieProductiva = misSectores.reduce((acc, s) => acc + (parseFloat(s.superficie_ha) || 0), 0)
+            
+            return {
+                ...p,
+                misSectores,
+                superficieProductiva: superficieProductiva.toFixed(2) // Redondeo a 2 decimales
+            }
+        })
+        setArbol(estructura)
+      }
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // --- ACCIONES ---
+  const abrirNuevaParcela = () => { setEditParcelaId(null); setModalParcelaOpen(true); }
+  const abrirEditarParcela = (id) => { setEditParcelaId(id); setModalParcelaOpen(true); }
+  
+  const eliminarParcela = async (id, cantidadSectores) => {
+    if (cantidadSectores > 0) return alert("❌ No puedes borrar una parcela con sectores. Borra los sectores primero.")
+    if (!confirm("¿Eliminar esta parcela?")) return
+    await supabase.from('parcelas').delete().eq('id', id)
+    cargarDatos()
+  }
+
+  const abrirNuevoSector = () => { setEditSectorId(null); setModalSectorOpen(true); }
+  const abrirEditarSector = (id) => { setEditSectorId(id); setModalSectorOpen(true); }
+
+  const eliminarSector = async (id) => {
+    if (!confirm("¿Eliminar sector? Se perderá su historial.")) return
+    const { error } = await supabase.from('sectores').delete().eq('id', id)
+    if (error) alert("No se puede eliminar: Tiene datos asociados.")
+    else cargarDatos()
+  }
+
+  const handleClose = (setOpenFunc) => {
+      if (window.intentarCerrarModal) window.intentarCerrarModal()
+      else setOpenFunc(false)
+  }
+
+  const styles = {
+    container: { padding: '20px', width: '90%' },
+    header: { display: 'flex', justifyContent: 'flex-start', gap: '20px', alignItems: 'center', marginBottom: '30px' },
+    title: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' },
+    btnNewParcela: { border:'none', cursor:'pointer', backgroundColor: '#1f2937', color: 'white', padding: '10px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '0.9rem' },
+    
+    parcelaCard: { backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', marginBottom: '25px', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
+    parcelaHeader: { backgroundColor: '#f8fafc', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e5e7eb' },
+    
+    parcelaInfo: { display:'flex', flexDirection:'column' },
+    parcelaTitle: { fontSize: '1.1rem', fontWeight: 'bold', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' },
+    parcelaStats: { fontSize: '0.85rem', color: '#64748b', marginTop:'4px', marginLeft:'28px' },
+
+    sectorList: { padding: '0' },
+    sectorItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid #f1f5f9' },
+    sectorInfo: { display: 'flex', alignItems: 'center', gap: '10px' },
+    badge: { fontSize: '0.75rem', backgroundColor: '#f0fdf4', color: '#15803d', padding: '2px 8px', borderRadius: '10px', fontWeight: '600' },
+    
+    actions: { display: 'flex', gap: '10px' },
+    btnIcon: { background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '5px' },
+    btnAddSector: { border:'none', cursor:'pointer', fontSize: '0.85rem', color: '#2563eb', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#eff6ff', padding: '6px 12px', borderRadius: '6px' }
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}><MapPin color="#4b5563" /> Configuración del Campo</h1>
+        <button onClick={abrirNuevaParcela} style={styles.btnNewParcela}><Plus size={18} /> Nueva Parcela</button>
+      </div>
+
+      {arbol.map(p => (
+        <div key={p.id} style={styles.parcelaCard}>
+            <div style={styles.parcelaHeader}>
+                <div style={styles.parcelaInfo}>
+                    <div style={styles.parcelaTitle}>
+                        <MapPin size={20} color="#059669" /> 
+                        {p.nombre} 
+                    </div>
+                    {/* MOSTRAMOS EL TOTAL PRODUCTIVO VS EL LEGAL */}
+                    <div style={styles.parcelaStats}>
+                        Superficie Productiva: <b>{p.superficieProductiva} ha</b> (Suma Sectores)
+                        {p.superficie_ha > 0 && <span> / Legal: {p.superficie_ha} ha</span>}
+                    </div>
+                </div>
+
+                <div style={styles.actions}>
+                    <button onClick={abrirNuevoSector} style={styles.btnAddSector}><Plus size={14}/> Agregar Sector</button>
+                    <button onClick={() => abrirEditarParcela(p.id)} style={styles.btnIcon}><Pencil size={18}/></button>
+                    <button onClick={() => eliminarParcela(p.id, p.misSectores.length)} style={{...styles.btnIcon, color:'#ef4444'}}><Trash2 size={18}/></button>
+                </div>
+            </div>
+
+            <div style={styles.sectorList}>
+                {p.misSectores.length === 0 ? (
+                    <div style={{padding:'20px', color:'#9ca3af', fontStyle:'italic', fontSize:'0.9rem'}}>No hay sectores registrados en esta parcela.</div>
+                ) : (
+                    p.misSectores.map(s => (
+                        <div key={s.id} style={styles.sectorItem}>
+                            <div style={styles.sectorInfo}>
+                                <Map size={18} color="#64748b" />
+                                <span style={{fontWeight:'600', color:'#1f2937'}}>{s.nombre}</span>
+                                
+                                <span style={styles.badge}>{s.variedad}</span>
+                                <span style={{fontSize:'0.85rem', color:'#64748b', display:'flex', alignItems:'center', gap:'4px'}}>
+                                    <Maximize size={12}/> {s.superficie_ha || 0} ha
+                                </span>
+                                <span style={{fontSize:'0.85rem', color:'#64748b'}}>| {s.cantidad_arboles} plantas</span>
+                            </div>
+                            <div style={styles.actions}>
+                                <button onClick={() => abrirEditarSector(s.id)} style={styles.btnIcon}><Pencil size={16}/></button>
+                                <button onClick={() => eliminarSector(s.id)} style={{...styles.btnIcon, color:'#ef4444'}}><Trash2 size={16}/></button>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+      ))}
+      
+      {arbol.length === 0 && !loading && <div style={{textAlign:'center', padding:'40px', color:'#6b7280'}}>No hay parcelas creadas. Comienza creando una.</div>}
+
+      <Modal isOpen={modalParcelaOpen} onClose={() => handleClose(setModalParcelaOpen)} title={editParcelaId ? "Editar Parcela" : "Nueva Parcela"}>
+          {modalParcelaOpen && <NuevaParcela idParcela={editParcelaId} cerrarModal={() => setModalParcelaOpen(false)} alGuardar={() => { setModalParcelaOpen(false); cargarDatos(); }} />}
+      </Modal>
+
+      <Modal isOpen={modalSectorOpen} onClose={() => handleClose(setModalSectorOpen)} title={editSectorId ? "Editar Sector" : "Nuevo Sector"}>
+          {modalSectorOpen && <NuevoSector idSector={editSectorId} cerrarModal={() => setModalSectorOpen(false)} alGuardar={() => { setModalSectorOpen(false); cargarDatos(); }} />}
+      </Modal>
+
+    </div>
+  )
+}
+
+export default ConfiguracionCampo
+
+
+================================================================================
+FILE: src/pages/DetalleSector.jsx
+================================================================================
+
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Map, Droplets, Shovel, Sprout, ArrowLeft, Calendar, TrendingUp } from 'lucide-react'
+
+function DetalleSector() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [sector, setSector] = useState(null)
+  const [programaRiego, setProgramaRiego] = useState(null)
+  const [labores, setLabores] = useState([])
+  const [cosechas, setCosechas] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const formatearFecha = (f) => f ? f.split('-').reverse().join('/') : '-'
+  const formatearNumero = (n) => n ? parseInt(n).toLocaleString('es-CL') : '0'
+
+  useEffect(() => {
+    async function cargarDatos() {
+      if (!id) return
+
+      // 1. Datos del Sector
+      const { data: sec } = await supabase.from('sectores').select('*, parcelas(nombre)').eq('id', id).single()
+      setSector(sec)
+
+      // 2. Programa de Riego ACTIVO
+      const { data: prog } = await supabase
+        .from('programas_riego')
+        .select('*')
+        .eq('sector_id', id)
+        .is('fecha_fin', null) // Solo el vigente
+        .single()
+      setProgramaRiego(prog)
+
+      // 3. Últimas 5 Labores
+      const { data: lab } = await supabase
+        .from('labores_campo')
+        .select('*')
+        .eq('sector_id', id)
+        .order('fecha', { ascending: false })
+        .limit(5)
+      setLabores(lab || [])
+
+      // 4. Historial Cosechas
+      const { data: cos } = await supabase
+        .from('cosechas')
+        .select('*')
+        .eq('sector_id', id)
+        .order('fecha', { ascending: false })
+      setCosechas(cos || [])
+
+      setLoading(false)
+    }
+    cargarDatos()
+  }, [id])
+
+  if (loading) return <div style={{padding:'40px', textAlign:'center'}}>Cargando ficha...</div>
+  if (!sector) return <div style={{padding:'40px', textAlign:'center'}}>Sector no encontrado.</div>
+
+  // Cálculos rápidos
+  const totalKilosHistorico = cosechas.reduce((sum, c) => sum + (Number(c.kilos) || 0), 0)
+  const rendimientoPromedio = sector.cantidad_arboles > 0 ? (totalKilosHistorico / sector.cantidad_arboles).toFixed(1) : 0
+
+  const styles = {
+    container: { padding: '20px', width: '100%', boxSizing: 'border-box' },
+    header: { marginBottom: '30px' },
+    backBtn: { display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', marginBottom: '10px', fontSize: '0.9rem' },
+    title: { fontSize: '2rem', fontWeight: 'bold', color: '#1f2937', margin: 0 },
+    subtitle: { color: '#6b7280', fontSize: '1.1rem', marginTop: '5px' },
+    
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '30px' },
+    card: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' },
+    cardTitle: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', fontWeight: 'bold', color: '#374151', marginBottom: '15px', borderBottom: '1px solid #f3f4f6', paddingBottom: '10px' },
+    
+    dataRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.95rem' },
+    dataLabel: { color: '#6b7280' },
+    dataValue: { fontWeight: '600', color: '#1f2937' },
+    
+    // Lista simple
+    list: { listStyle: 'none', padding: 0, margin: 0 },
+    listItem: { padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontSize: '0.9rem' },
+    empty: { fontStyle: 'italic', color: '#9ca3af', fontSize: '0.9rem' },
+
+    badgeRiego: { backgroundColor: '#e0f2fe', color: '#0284c7', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.9rem', display: 'inline-block', marginTop: '5px' }
+  }
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <button onClick={() => navigate('/sectores')} style={styles.backBtn}><ArrowLeft size={16} /> Volver a Sectores</button>
+        <h1 style={styles.title}>{sector.nombre}</h1>
+        <div style={styles.subtitle}>{sector.parcelas?.nombre} — {sector.variedad}</div>
+      </div>
+
+      <div style={styles.grid}>
+        
+        {/* TARJETA 1: DATOS TÉCNICOS */}
+        <div style={styles.card}>
+            <div style={styles.cardTitle}><Map size={20} color="#059669"/> Ficha Técnica</div>
+            <div style={styles.dataRow}>
+                <span style={styles.dataLabel}>Árboles</span>
+                <span style={styles.dataValue}>{sector.cantidad_arboles} un.</span>
+            </div>
+            <div style={styles.dataRow}>
+                <span style={styles.dataLabel}>Año Plantación</span>
+                <span style={styles.dataValue}>{sector.anio_plantacion}</span>
+            </div>
+            <div style={styles.dataRow}>
+                <span style={styles.dataLabel}>Rendimiento Histórico</span>
+                <span style={{...styles.dataValue, color: '#16a34a'}}>{rendimientoPromedio} Kg/árbol</span>
+            </div>
+        </div>
+
+        {/* TARJETA 2: RIEGO ACTUAL */}
+        <div style={styles.card}>
+            <div style={styles.cardTitle}><Droplets size={20} color="#0ea5e9"/> Riego Vigente</div>
+            {programaRiego ? (
+                <div>
+                    <div style={{fontSize:'1.2rem', fontWeight:'bold', color:'#0284c7'}}>{programaRiego.frecuencia}</div>
+                    <div style={styles.dataRow}>
+                        <span style={styles.dataLabel}>Duración:</span>
+                        <span style={styles.dataValue}>{programaRiego.duracion_minutos} min</span>
+                    </div>
+                    <div style={styles.dataRow}>
+                        <span style={styles.dataLabel}>Desde:</span>
+                        <span style={styles.dataValue}>{formatearFecha(programaRiego.fecha_inicio)}</span>
+                    </div>
+                    {programaRiego.comentarios && (
+                        <div style={{fontStyle:'italic', color:'#6b7280', fontSize:'0.9rem', marginTop:'10px'}}>"{programaRiego.comentarios}"</div>
+                    )}
+                </div>
+            ) : (
+                <div style={styles.empty}>No hay programa activo.</div>
+            )}
+        </div>
+      </div>
+
+      <div style={styles.grid}>
+          {/* LISTA: HISTORIAL LABORES */}
+          <div style={styles.card}>
+              <div style={styles.cardTitle}><Shovel size={20} color="#d97706"/> Últimas Labores</div>
+              <ul style={styles.list}>
+                  {labores.map(l => (
+                      <li key={l.id} style={styles.listItem}>
+                          <div style={{fontWeight:'bold', color:'#d97706'}}>{l.tipo_labor}</div>
+                          <div style={{display:'flex', justifyContent:'space-between', color:'#6b7280', fontSize:'0.85rem'}}>
+                              <span>{formatearFecha(l.fecha)}</span>
+                              {l.costo_mo > 0 && <span>${formatearNumero(l.costo_mo)}</span>}
+                          </div>
+                          {l.insumos_usados && <div style={{fontSize:'0.85rem', color:'#374151'}}>Insumos: {l.insumos_usados}</div>}
+                      </li>
+                  ))}
+                  {labores.length === 0 && <div style={styles.empty}>Sin registros recientes.</div>}
+              </ul>
+              <button onClick={() => navigate('/labores/nuevo')} style={{marginTop:'15px', background:'none', border:'none', color:'#2563eb', cursor:'pointer', fontWeight:'bold'}}>+ Registrar Labor</button>
+          </div>
+
+          {/* LISTA: PRODUCCIÓN */}
+          <div style={styles.card}>
+              <div style={styles.cardTitle}><TrendingUp size={20} color="#16a34a"/> Producción Reciente</div>
+              <div style={{marginBottom:'15px'}}>
+                  <span style={{fontSize:'0.9rem', color:'#6b7280'}}>Total Acumulado: </span>
+                  <span style={{fontWeight:'bold', fontSize:'1.1rem', color:'#16a34a'}}>{formatearNumero(totalKilosHistorico)} Kg</span>
+              </div>
+              <ul style={styles.list}>
+                  {cosechas.map(c => (
+                      <li key={c.id} style={styles.listItem}>
+                          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                              <span style={{fontWeight:'bold', color:'#374151'}}>{formatearNumero(c.kilos)} Kg</span>
+                              <span style={{fontSize:'0.8rem', backgroundColor: c.destino==='Venta'?'#dcfce7':'#fee2e2', color: c.destino==='Venta'?'#166534':'#991b1b', padding:'2px 6px', borderRadius:'4px'}}>{c.destino}</span>
+                          </div>
+                          <div style={{color:'#6b7280', fontSize:'0.85rem'}}>{formatearFecha(c.fecha)}</div>
+                      </li>
+                  ))}
+                  {cosechas.length === 0 && <div style={styles.empty}>Sin cosechas registradas.</div>}
+              </ul>
+          </div>
+      </div>
+
+    </div>
+  )
+}
+
+export default DetalleSector
+
+

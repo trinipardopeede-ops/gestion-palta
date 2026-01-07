@@ -1,0 +1,209 @@
+REPORTE DE USO DE ARCHIVOS
+============================================
+
+📂 ARCHIVO: src/App.jsx
+   ⚠️  NO SE ENCONTRARON REFERENCIAS (¿Archivo huérfano o Página Principal?)
+
+--------------------------------------------
+📂 ARCHIVO: src/components/Modal.jsx
+   ✅ Usado en (11 lugares):
+      - src/pages/Bitacora.jsx
+      - src/pages/Bodega.jsx
+      - src/pages/Clientes.jsx
+      - src/pages/ConfiguracionCampo.jsx
+      - src/pages/Cosechas.jsx
+      - src/pages/CuentasSocios.jsx
+      - src/pages/Gastos.jsx
+      - src/pages/Labores.jsx
+      - src/pages/OfertasComerciales.jsx
+      - src/pages/Proveedores.jsx
+      - src/pages/Riego.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/components/Sidebar.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/main.jsx
+   ⚠️  NO SE ENCONTRARON REFERENCIAS (¿Archivo huérfano o Página Principal?)
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/Bitacora.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/Bodega.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/Categorias.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/Clientes.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/ConfiguracionCampo.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/Cosechas.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/CuentasSocios.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/Dashboard.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/DashboardCosecha.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/Dashboard.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/DashboardFinanzas.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/Dashboard.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/DashboardSectores.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/Dashboard.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/DetalleSector.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/Gastos.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/Labores.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/NuevaCosecha.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/Cosechas.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/NuevaLabor.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/Labores.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/NuevaNota.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/Bitacora.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/NuevaOferta.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/OfertasComerciales.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/NuevaParcela.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/ConfiguracionCampo.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/NuevoCliente.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/Clientes.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/NuevoGasto.jsx
+   ✅ Usado en (2 lugares):
+      - src/pages/CuentasSocios.jsx
+      - src/pages/Gastos.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/NuevoMovimientoBodega.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/Bodega.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/NuevoProducto.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/Bodega.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/NuevoPrograma.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/Riego.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/NuevoProveedor.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/Proveedores.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/NuevoSector.jsx
+   ✅ Usado en (1 lugares):
+      - src/pages/ConfiguracionCampo.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/OfertasComerciales.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/Proveedores.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/pages/Riego.jsx
+   ✅ Usado en (1 lugares):
+      - src/App.jsx
+
+--------------------------------------------
+📂 ARCHIVO: src/supabaseClient.js
+   ✅ Usado en (28 lugares):
+      - src/pages/Bitacora.jsx
+      - src/pages/Bodega.jsx
+      - src/pages/Categorias.jsx
+      - src/pages/Clientes.jsx
+      - src/pages/ConfiguracionCampo.jsx
+      - src/pages/Cosechas.jsx
+      - src/pages/CuentasSocios.jsx
+      - src/pages/DashboardCosecha.jsx
+      - src/pages/DashboardFinanzas.jsx
+      - src/pages/DashboardSectores.jsx
+      - src/pages/DetalleSector.jsx
+      - src/pages/Gastos.jsx
+      - src/pages/Labores.jsx
+      - src/pages/NuevaCosecha.jsx
+      - src/pages/NuevaLabor.jsx
+      - src/pages/NuevaNota.jsx
+      - src/pages/NuevaOferta.jsx
+      - src/pages/NuevaParcela.jsx
+      - src/pages/NuevoCliente.jsx
+      - src/pages/NuevoGasto.jsx
+      - src/pages/NuevoMovimientoBodega.jsx
+      - src/pages/NuevoProducto.jsx
+      - src/pages/NuevoPrograma.jsx
+      - src/pages/NuevoProveedor.jsx
+      - src/pages/NuevoSector.jsx
+      - src/pages/OfertasComerciales.jsx
+      - src/pages/Proveedores.jsx
+      - src/pages/Riego.jsx
+
+--------------------------------------------

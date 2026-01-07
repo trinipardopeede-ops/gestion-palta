@@ -1,0 +1,190 @@
+ARBOL DE DEPENDENCIAS DEL PROYECTO
+====================================
+
+📦 Bitacora.jsx
+    └── supabaseClient.js
+    └── Modal.jsx
+    └── NuevaNota.jsx
+        └── supabaseClient.js
+
+----------------------------------------
+
+📦 Bodega.jsx
+    └── supabaseClient.js
+    └── Modal.jsx
+    └── NuevoProducto.jsx
+        └── supabaseClient.js
+    └── NuevoMovimientoBodega.jsx
+        └── supabaseClient.js
+
+----------------------------------------
+
+📦 Categorias.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 Clientes.jsx
+    └── supabaseClient.js
+    └── Modal.jsx
+    └── NuevoCliente.jsx
+        └── supabaseClient.js
+
+----------------------------------------
+
+📦 ConfiguracionCampo.jsx
+    └── supabaseClient.js
+    └── Modal.jsx
+    └── NuevaParcela.jsx
+        └── supabaseClient.js
+    └── NuevoSector.jsx
+        └── supabaseClient.js
+
+----------------------------------------
+
+📦 Cosechas.jsx
+    └── supabaseClient.js
+    └── Modal.jsx
+    └── NuevaCosecha.jsx
+        └── supabaseClient.js
+
+----------------------------------------
+
+📦 CuentasSocios.jsx
+    └── supabaseClient.js
+    └── Modal.jsx
+    └── NuevoGasto.jsx
+        └── supabaseClient.js
+
+----------------------------------------
+
+📦 Dashboard.jsx
+    └── DashboardSectores.jsx
+        └── supabaseClient.js
+    └── DashboardFinanzas.jsx
+        └── supabaseClient.js
+    └── DashboardCosecha.jsx
+        └── supabaseClient.js
+
+----------------------------------------
+
+📦 DashboardCosecha.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 DashboardFinanzas.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 DashboardSectores.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 DetalleSector.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 Gastos.jsx
+    └── supabaseClient.js
+    └── Modal.jsx
+    └── NuevoGasto.jsx
+        └── supabaseClient.js
+
+----------------------------------------
+
+📦 Labores.jsx
+    └── supabaseClient.js
+    └── Modal.jsx
+    └── NuevaLabor.jsx
+        └── supabaseClient.js
+
+----------------------------------------
+
+📦 NuevaCosecha.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 NuevaLabor.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 NuevaNota.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 NuevaOferta.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 NuevaParcela.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 NuevoCliente.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 NuevoGasto.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 NuevoMovimientoBodega.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 NuevoProducto.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 NuevoPrograma.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 NuevoProveedor.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 NuevoSector.jsx
+    └── supabaseClient.js
+
+----------------------------------------
+
+📦 OfertasComerciales.jsx
+    └── supabaseClient.js
+    └── Modal.jsx
+    └── NuevaOferta.jsx
+        └── supabaseClient.js
+
+----------------------------------------
+
+📦 Proveedores.jsx
+    └── supabaseClient.js
+    └── Modal.jsx
+    └── NuevoProveedor.jsx
+        └── supabaseClient.js
+
+----------------------------------------
+
+📦 Riego.jsx
+    └── supabaseClient.js
+    └── Modal.jsx
+    └── NuevoPrograma.jsx
+        └── supabaseClient.js
+
+----------------------------------------
+
