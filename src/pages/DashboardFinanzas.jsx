@@ -42,15 +42,21 @@ export default function DashboardFinanzas() {
       const { data: provs } = await supabase.from('proveedores').select('id, nombre').order('nombre');
       if(provs) setProveedores(provs);
 
+      // Iniciamos la query base
       let query = supabase
         .from('gastos')
         .select(`
             monto, estado_pago, fecha, proveedor_id,
             categorias_gastos!gastos_categoria_id_fkey ( nombre ),
             proveedores ( nombre )
-        `)
-        .gte('fecha', `${filtroAnio}-01-01`)
-        .lte('fecha', `${filtroAnio}-12-31`);
+        `);
+
+      // Solo aplicamos filtro de fechas si NO es "Todos"
+      if (filtroAnio !== 'Todos') {
+        query = query
+            .gte('fecha', `${filtroAnio}-01-01`)
+            .lte('fecha', `${filtroAnio}-12-31`);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
@@ -112,20 +118,17 @@ export default function DashboardFinanzas() {
   const fmt = (num) => `$ ${(num || 0).toLocaleString('es-CL')}`;
 
   // --- ETIQUETAS EXTERNAS LIMPIAS ---
-  // Esta función renderiza el texto FUERA de la barra para que se vea siempre
   const renderExternalLabel = (props) => {
     const { x, y, width, height, value } = props;
-    const isVertical = props.orientation === 'top'; // Identificador casero para saber cual grafico es
+    const isVertical = props.orientation === 'top';
 
     if (isVertical) {
-        // Para gráfico vertical (Estado Pagos): Texto ARRIBA
         return (
             <text x={x + width / 2} y={y - 10} fill="#374151" textAnchor="middle" dominantBaseline="bottom" style={{fontSize: '0.85rem', fontWeight: 'bold'}}>
                 {fmt(value)}
             </text>
         );
     } else {
-        // Para gráfico horizontal (Categorías): Texto a la DERECHA
         return (
             <text x={x + width + 5} y={y + height / 2} fill="#374151" textAnchor="start" dominantBaseline="middle" style={{fontSize: '0.8rem', fontWeight: 'bold'}}>
                 {fmt(value)}
@@ -175,6 +178,7 @@ export default function DashboardFinanzas() {
             <div style={styles.selectGroup}>
                 <span style={styles.labelSelect}>Año</span>
                 <select value={filtroAnio} onChange={e => setFiltroAnio(e.target.value)} style={styles.select}>
+                    <option value="Todos">Todos</option> {/* Opción Agregada */}
                     {[2024, 2025, 2026, 2027].map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
             </div>
@@ -254,7 +258,6 @@ export default function DashboardFinanzas() {
                             <BarChart 
                                 data={dataCategorias} 
                                 layout="vertical" 
-                                // AUMENTAMOS margen derecho (right: 90) para que quepa el dinero
                                 margin={{top: 5, right: 90, left: 30, bottom: 5}} 
                             >
                                 <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f3f4f6"/>
@@ -276,7 +279,6 @@ export default function DashboardFinanzas() {
                                     {dataCategorias.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS_CAT[index % COLORS_CAT.length]} />
                                     ))}
-                                    {/* Etiqueta a la derecha */}
                                     <LabelList dataKey="value" content={(props) => renderExternalLabel({...props, orientation: 'right'})} />
                                 </Bar>
                             </BarChart>
@@ -293,7 +295,6 @@ export default function DashboardFinanzas() {
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart 
                             data={dataEstado} 
-                            // AUMENTAMOS margen superior (top: 30) para que quepa el dinero
                             margin={{top: 30, right: 20, left: 20, bottom: 5}}
                         >
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6"/>
@@ -313,7 +314,6 @@ export default function DashboardFinanzas() {
                                 {dataEstado.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS_ESTADO[entry.name] || '#9ca3af'} />
                                 ))}
-                                {/* Etiqueta arriba */}
                                 <LabelList dataKey="value" content={(props) => renderExternalLabel({...props, orientation: 'top'})} />
                             </Bar>
                         </BarChart>
