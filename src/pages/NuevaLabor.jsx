@@ -245,12 +245,19 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
               await supabase.from('bodega_movimientos').insert(movs)
           }
 
-          // PERMITIR INSERTAR GASTO EN CUALQUIER MOMENTO (Edit o New) SI SE MARCA EL CHECK
+          // PERMITIR INSERTAR GASTO EN CUALQUIER MOMENTO
           if (formData.pasar_a_gastos) {
                await supabase.from('gastos').insert([{
-                  fecha: formData.fecha, monto: totalGeneral, proveedor_id: formData.proveedor_id || null,
-                  descripcion: `Labor: ${formData.tipo_labor}`, tipo_documento: 'Interno', estado_pago: 'Pendiente',
-                  categoria_id: formData.categoria_id, subcategoria_id: formData.subcategoria_id || null, sectores_ids: sectoresSeleccionados
+                  fecha: formData.fecha, 
+                  monto: totalGeneral, 
+                  proveedor_id: formData.proveedor_id || null,
+                  descripcion: `Labor: ${formData.tipo_labor}`, 
+                  tipo_documento: 'Interno', 
+                  estado_pago: 'Pendiente',
+                  categoria_id: formData.categoria_id, 
+                  subcategoria_id: formData.subcategoria_id || null, 
+                  sectores_ids: sectoresSeleccionados,
+                  labor_origen_id: laborIdInserted // <--- CORRECCION CLAVE AQUI
                }])
           }
           alGuardar()
@@ -272,7 +279,7 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
         padding:'8px', textAlign:'center', border: active?'2px solid #2563eb':'1px solid #e5e7eb', 
         borderRadius:8, cursor:'pointer', backgroundColor: active?'#eff6ff':'white', color: active?'#1e40af':'#4b5563' 
     }),
-    inputStd: { width:'100%', padding:8, borderRadius:6, border:'1px solid #d1d5db', boxSizing: 'border-box' } // <-- CORRECCION FECHA
+    inputStd: { width:'100%', padding:8, borderRadius:6, border:'1px solid #d1d5db', boxSizing: 'border-box' } 
   }
 
   return (
@@ -295,7 +302,6 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20}}>
                 <div>
                     <label style={styles.label}>Fecha</label>
-                    {/* USO DE STYLE UNIFICADO CON BOX-SIZING */}
                     <input type="date" value={formData.fecha} onChange={e => updateForm('fecha', e.target.value)} required style={styles.inputStd}/>
                 </div>
                 <div>
@@ -418,7 +424,7 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
                  <div style={{textAlign:'right', fontSize:'0.9rem', color:'#6b7280'}}>Costo Total Estimado</div>
                  <div style={styles.totalBig}>$ {Math.round(totalGeneral).toLocaleString('es-CL')}</div>
                  
-                 {/* SECCIÓN GASTOS: RESTAURADA (ELIMINADO !idLabor) */}
+                 {/* SECCIÓN GASTOS: RESTAURADA CON CORRECCIÓN */}
                  <div style={{marginTop:10, paddingTop:10, borderTop:'1px dashed #d1d5db'}}>
                      <div style={{display:'flex', gap:5, alignItems:'center', justifyContent:'flex-end', marginBottom:8}}>
                          <input type="checkbox" id="chkGasto" checked={formData.pasar_a_gastos} onChange={e => updateForm('pasar_a_gastos', e.target.checked)} style={{cursor:'pointer'}}/>

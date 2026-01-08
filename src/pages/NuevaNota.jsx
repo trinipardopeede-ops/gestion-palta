@@ -1,33 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
-import { 
-    Save, Plus, Trash2, Calendar, CheckSquare, 
-    AlertTriangle, Paperclip, X, FileText, Type 
-} from 'lucide-react'
+import { Save, Plus, Trash2, Calendar, CheckSquare, X, Clock, Paperclip } from 'lucide-react'
 
 function NuevaNota({ notaEditar, cerrarModal, alGuardar }) {
   const [loading, setLoading] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
   const fileInputRef = useRef(null)
   
-  // --- ESTADOS DEL FORMULARIO ---
   const [formData, setFormData] = useState({
-    titulo: '',
-    contenido: '',
-    tipo: 'Nota', // Nota, Incidente, Tarea, Hito
-    importante: false,
-    fecha_alerta: '',  
-    estado: 'Pendiente'
+    titulo: '', contenido: '', tipo: 'Nota', importante: false, fecha: new Date().toISOString().split('T')[0]
   })
 
-  // Checklist (Array de objetos { id, texto, hecho })
   const [checklistItems, setChecklistItems] = useState([]) 
-  const [nuevoItemTexto, setNuevoItemTexto] = useState('')
-
-  // Adjuntos (Array de URLs o Paths)
+  const [nuevoItem, setNuevoItem] = useState({ texto: '', fecha: '' })
   const [adjuntos, setAdjuntos] = useState([]) 
   const [uploading, setUploading] = useState(false)
 
-  // --- CARGA INICIAL (EDICIÓN) ---
   useEffect(() => {
     if (notaEditar) {
       setFormData({
@@ -35,256 +23,122 @@ function NuevaNota({ notaEditar, cerrarModal, alGuardar }) {
         contenido: notaEditar.contenido || '',
         tipo: notaEditar.tipo || 'Nota',
         importante: notaEditar.importante || false,
-        fecha_alerta: notaEditar.fecha_alerta ? notaEditar.fecha_alerta.split('T')[0] : '',
-        estado: notaEditar.estado || 'Pendiente'
+        fecha: notaEditar.fecha || new Date().toISOString().split('T')[0]
       })
-      
-      // FIX BUG CHECKLIST: Asegurar que cada item tenga ID único al cargar
-      if (notaEditar.checklist && Array.isArray(notaEditar.checklist)) {
-          const safeChecklist = notaEditar.checklist.map((item, idx) => ({
-              ...item,
-              id: item.id || Date.now() + idx // Si no tiene ID, generamos uno
-          }))
-          setChecklistItems(safeChecklist)
-      }
-
-      // Cargar Adjuntos
-      if (notaEditar.adjuntos && Array.isArray(notaEditar.adjuntos)) {
-          setAdjuntos(notaEditar.adjuntos)
-      }
+      setChecklistItems(notaEditar.checklist || [])
+      setAdjuntos(notaEditar.adjuntos || [])
     }
   }, [notaEditar])
 
-  // --- LÓGICA CHECKLIST ---
   const addChecklistItem = () => {
-      if (!nuevoItemTexto.trim()) return
-      const newItem = {
-          id: Date.now(), // ID único basado en timestamp
-          texto: nuevoItemTexto,
-          hecho: false
-      }
-      setChecklistItems([...checklistItems, newItem])
-      setNuevoItemTexto('')
+      if (!nuevoItem.texto.trim()) return
+      setChecklistItems([...checklistItems, { 
+          id: Date.now(), 
+          texto: nuevoItem.texto, 
+          fecha_vencimiento: nuevoItem.fecha, 
+          hecho: false 
+      }])
+      setNuevoItem({ texto: '', fecha: '' })
+      setHasChanges(true)
   }
 
-  const toggleCheck = (id) => {
-      setChecklistItems(prev => prev.map(item => 
-          item.id === id ? { ...item, hecho: !item.hecho } : item
-      ))
-  }
-
+  // FUNCIÓN REESTABLECIDA 
   const deleteChecklistItem = (id) => {
       setChecklistItems(prev => prev.filter(item => item.id !== id))
+      setHasChanges(true)
   }
 
-  // --- LÓGICA ADJUNTOS (SUPABASE STORAGE) ---
   const handleFileUpload = async (e) => {
       const files = e.target.files
       if (!files || files.length === 0) return
-
       setUploading(true)
+      
       try {
-          const newFiles = []
           for (const file of files) {
               const fileExt = file.name.split('.').pop()
               const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-              const filePath = `${fileName}`
-
-              // Subir a bucket 'bitacora'
-              const { data, error } = await supabase.storage
-                  .from('bitacora')
-                  .upload(filePath, file)
-
-              if (error) throw error
-
-              // Obtener URL pública
-              const { data: publicUrlData } = supabase.storage
-                  .from('bitacora')
-                  .getPublicUrl(filePath)
               
-              newFiles.push({
-                  nombre: file.name,
-                  url: publicUrlData.publicUrl,
-                  path: filePath
-              })
+              const { error: uploadError } = await supabase.storage
+                  .from('bitacora')
+                  .upload(fileName, file)
+
+              if (uploadError) throw uploadError
+
+              const { data: { publicUrl } } = supabase.storage.from('bitacora').getPublicUrl(fileName)
+              setAdjuntos(prev => [...prev, { nombre: file.name, url: publicUrl, path: fileName }])
           }
-          setAdjuntos([...adjuntos, ...newFiles])
+          setHasChanges(true)
       } catch (error) {
-          alert("Error subiendo archivo: " + error.message + "\n(Asegúrate de crear el bucket 'bitacora' en Supabase)")
+          alert("Error: Asegúrate de que el bucket 'bitacora' exista en Supabase Storage y sea Público.")
+          console.error(error)
       } finally {
           setUploading(false)
       }
   }
 
-  const removeAdjunto = (index) => {
-      setAdjuntos(prev => prev.filter((_, i) => i !== index))
-  }
-
-  // --- GUARDAR ---
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-
     try {
-        const payload = {
-            ...formData,
-            checklist: checklistItems,
-            adjuntos: adjuntos,
-            // Si es nueva nota, ponemos fecha de hoy automáticamente
-            fecha: notaEditar ? notaEditar.fecha : new Date().toISOString() 
-        }
-
-        if (notaEditar) {
-            await supabase.from('bitacora').update(payload).eq('id', notaEditar.id)
-        } else {
-            await supabase.from('bitacora').insert([payload])
-        }
+        const payload = { ...formData, checklist: checklistItems, adjuntos: adjuntos, activo: true }
+        if (notaEditar) await supabase.from('bitacora').update(payload).eq('id', notaEditar.id)
+        else await supabase.from('bitacora').insert([payload])
         alGuardar()
-    } catch (error) {
-        alert("Error: " + error.message)
-    } finally {
-        setLoading(false)
-    }
-  }
-
-  // --- ESTILOS (GRID LAYOUT) ---
-  const styles = {
-      layout: { display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '30px', alignItems: 'start' },
-      colLeft: { display: 'flex', flexDirection: 'column', gap: '20px' },
-      colRight: { backgroundColor: '#f9fafb', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb', maxHeight:'70vh', overflowY:'auto' },
-      label: { fontSize: '0.85rem', fontWeight: 'bold', color: '#374151', marginBottom: '5px', display:'flex', alignItems:'center', gap:6 },
-      input: { padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', width: '100%', boxSizing: 'border-box' },
-      textarea: { padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', width: '100%', boxSizing: 'border-box', minHeight: '100px', fontFamily: 'inherit' },
-      
-      // Checklist styles
-      checkItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px', backgroundColor: 'white', borderBottom: '1px solid #f3f4f6' },
-      
-      // Adjuntos
-      attachChip: { display:'inline-flex', alignItems:'center', gap:6, padding:'4px 10px', backgroundColor:'#e5e7eb', borderRadius:'15px', fontSize:'0.8rem', marginRight:5, marginBottom:5 },
-      
-      footer: { marginTop: '25px', display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #e5e7eb', paddingTop: '15px' },
-      btnSave: { padding: '10px 24px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', gap: '8px', alignItems: 'center' }
+    } catch (error) { alert(error.message) } finally { setLoading(false) }
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-        <div style={styles.layout}>
+    <form onSubmit={handleSubmit} style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20}}>
+        <div>
+            <label style={{fontWeight:'bold', fontSize:'0.85rem'}}>Título</label>
+            <input type="text" value={formData.titulo} onChange={e => {setFormData({...formData, titulo: e.target.value}); setHasChanges(true)}} style={{width:'100%', padding:10, borderRadius:8, border:'1px solid #ddd', marginTop:5}} required/>
             
-            {/* COLUMNA IZQUIERDA: METADATA */}
-            <div style={styles.colLeft}>
-                <div>
-                    <label style={styles.label}><Type size={14}/> Título</label>
-                    <input type="text" value={formData.titulo} onChange={e => setFormData({...formData, titulo: e.target.value})} style={styles.input} placeholder="Ej: Falla en bomba sector 2" required autoFocus/>
-                </div>
-
-                <div style={{display:'flex', gap:15}}>
-                    <div style={{flex:1}}>
-                        <label style={styles.label}>Tipo</label>
-                        <select value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})} style={styles.input}>
-                            <option>Nota</option>
-                            <option>Incidente</option>
-                            <option>Tarea</option>
-                            <option>Hito</option>
-                        </select>
-                    </div>
-                    <div style={{flex:1}}>
-                         <label style={styles.label}>Estado</label>
-                         <select value={formData.estado} onChange={e => setFormData({...formData, estado: e.target.value})} style={styles.input}>
-                            <option>Pendiente</option>
-                            <option>En Proceso</option>
-                            <option>Realizado</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div style={{padding:'15px', backgroundColor: formData.importante ? '#fef2f2' : '#f3f4f6', borderRadius:'8px', border: formData.importante ? '1px solid #fecaca' : '1px solid #e5e7eb'}}>
-                    <div style={{display:'flex', alignItems:'center', gap:10}}>
-                        <input type="checkbox" checked={formData.importante} onChange={e => setFormData({...formData, importante: e.target.checked})} id="chkImp" style={{width:16, height:16}}/>
-                        <label htmlFor="chkImp" style={{fontWeight:'bold', color: formData.importante ? '#dc2626' : '#374151', cursor:'pointer', display:'flex', alignItems:'center', gap:5}}>
-                            {formData.importante && <AlertTriangle size={16}/>}
-                            Marcar como Importante
-                        </label>
-                    </div>
-                </div>
-
-                <div>
-                    <label style={styles.label}><Calendar size={14}/> Fecha Alerta / Vencimiento</label>
-                    <input type="date" value={formData.fecha_alerta} onChange={e => setFormData({...formData, fecha_alerta: e.target.value})} style={styles.input}/>
-                </div>
-
-                {/* ADJUNTOS */}
-                <div>
-                    <label style={styles.label}>
-                        <Paperclip size={14}/> Archivos Adjuntos
-                        <button type="button" onClick={() => fileInputRef.current.click()} style={{marginLeft:'auto', fontSize:'0.75rem', color:'#2563eb', background:'none', border:'none', cursor:'pointer', fontWeight:'bold'}}>
-                            + Subir
-                        </button>
-                    </label>
-                    <input type="file" multiple ref={fileInputRef} style={{display:'none'}} onChange={handleFileUpload} />
-                    
-                    <div style={{marginTop:5}}>
-                        {uploading && <div style={{fontSize:'0.8rem', color:'#6b7280'}}>Subiendo...</div>}
-                        {adjuntos.map((file, idx) => (
-                            <div key={idx} style={styles.attachChip}>
-                                <span style={{maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{file.nombre}</span>
-                                <X size={12} style={{cursor:'pointer'}} onClick={() => removeAdjunto(idx)}/>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* COLUMNA DERECHA: CONTENIDO Y CHECKLIST */}
-            <div style={styles.colRight}>
-                <div style={{marginBottom:20}}>
-                    <label style={styles.label}><FileText size={14}/> Detalle / Observación</label>
-                    <textarea value={formData.contenido} onChange={e => setFormData({...formData, contenido: e.target.value})} style={styles.textarea} placeholder="Escribe aquí los detalles..." />
-                </div>
-
-                {/* CHECKLIST */}
-                <div>
-                    <label style={styles.label}><CheckSquare size={14}/> Tareas / Checklist</label>
-                    <div style={{display:'flex', gap:5, marginBottom:10}}>
-                        <input 
-                            type="text" 
-                            value={nuevoItemTexto} 
-                            onChange={e => setNuevoItemTexto(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addChecklistItem())}
-                            placeholder="Nueva tarea..." 
-                            style={{...styles.input, fontSize:'0.9rem'}}
-                        />
-                        <button type="button" onClick={addChecklistItem} style={{backgroundColor:'#e5e7eb', border:'none', borderRadius:'6px', cursor:'pointer', padding:'0 12px'}}>
-                            <Plus size={16}/>
-                        </button>
-                    </div>
-
-                    <div style={{backgroundColor:'white', borderRadius:'8px', border:'1px solid #e5e7eb', overflow:'hidden'}}>
-                        {checklistItems.length === 0 && <div style={{padding:15, color:'#9ca3af', fontSize:'0.85rem', textAlign:'center'}}>Sin tareas</div>}
-                        
-                        {checklistItems.map(item => (
-                            <div key={item.id} style={styles.checkItem}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={item.hecho} 
-                                    onChange={() => toggleCheck(item.id)} // Usamos ID específico
-                                    style={{width:16, height:16, cursor:'pointer'}}
-                                />
-                                <span style={{flex:1, fontSize:'0.9rem', textDecoration: item.hecho ? 'line-through' : 'none', color: item.hecho ? '#9ca3af' : '#374151'}}>
-                                    {item.texto}
-                                </span>
-                                <Trash2 size={14} color="#ef4444" style={{cursor:'pointer'}} onClick={() => deleteChecklistItem(item.id)}/>
-                            </div>
-                        ))}
-                    </div>
+            <label style={{fontWeight:'bold', fontSize:'0.85rem', display:'block', marginTop:15}}>Contenido</label>
+            <textarea value={formData.contenido} onChange={e => {setFormData({...formData, contenido: e.target.value}); setHasChanges(true)}} style={{width:'100%', padding:10, borderRadius:8, border:'1px solid #ddd', minHeight:150, marginTop:5}}/>
+            
+            <div style={{marginTop:15, padding:12, backgroundColor:'#f3f4f6', borderRadius:8}}>
+                <button type="button" onClick={() => fileInputRef.current.click()} style={{width:'100%', padding:8, border:'1px dashed #9ca3af', borderRadius:6, cursor:'pointer', backgroundColor:'white'}}>
+                    {uploading ? "Subiendo..." : "+ Adjuntar Archivos"}
+                </button>
+                <input type="file" multiple ref={fileInputRef} onChange={handleFileUpload} style={{display:'none'}}/>
+                <div style={{marginTop:10, display:'flex', flexWrap:'wrap', gap:5}}>
+                    {adjuntos.map((f, i) => (
+                        <span key={i} style={{fontSize:'0.7rem', backgroundColor:'#e5e7eb', padding:'4px 8px', borderRadius:10, display:'flex', alignItems:'center', gap:5}}>
+                            {f.nombre} <X size={12} onClick={() => setAdjuntos(adjuntos.filter((_, idx) => idx !== i))} style={{cursor:'pointer'}}/>
+                        </span>
+                    ))}
                 </div>
             </div>
         </div>
 
-        <div style={styles.footer}>
-             <button type="button" onClick={cerrarModal} style={{...styles.btnSave, backgroundColor: 'transparent', color: '#4b5563', border: '1px solid #d1d5db'}}>Cancelar</button>
-             <button type="submit" style={styles.btnSave} disabled={loading}>
-                <Save size={18}/> {loading ? 'Guardando...' : 'Guardar Nota'}
-             </button>
+        <div style={{display:'flex', flexDirection:'column', borderLeft:'1px solid #eee', paddingLeft:20}}>
+            <label style={{fontWeight:'bold', fontSize:'0.85rem', color:'#111827'}}>TAREAS CON VENCIMIENTO</label>
+            <div style={{marginTop:10, display:'flex', flexDirection:'column', gap:5}}>
+                <input type="text" placeholder="¿Qué hacer?" value={nuevoItem.texto} onChange={e => setNuevoItem({...nuevoItem, texto: e.target.value})} style={{padding:8, borderRadius:6, border:'1px solid #ddd'}}/>
+                <div style={{display:'flex', gap:5}}>
+                    <input type="date" value={nuevoItem.fecha} onChange={e => setNuevoItem({...nuevoItem, fecha: e.target.value})} style={{flex:1, padding:8, borderRadius:6, border:'1px solid #ddd'}}/>
+                    <button type="button" onClick={addChecklistItem} style={{padding:'0 15px', backgroundColor:'#111827', color:'white', border:'none', borderRadius:6}}><Plus size={18}/></button>
+                </div>
+            </div>
+
+            <div style={{marginTop:15, maxHeight:250, overflowY:'auto'}}>
+                {checklistItems.map(item => (
+                    <div key={item.id} style={{display:'flex', justifyContent:'space-between', padding:'10px', backgroundColor:'white', border:'1px solid #f3f4f6', borderRadius:8, marginBottom:5}}>
+                        <div>
+                            <div style={{fontSize:'0.9rem', fontWeight:'bold'}}>{item.texto}</div>
+                            {item.fecha_vencimiento && <div style={{fontSize:'0.75rem', color:'#d97706'}}><Clock size={10} style={{display:'inline'}}/> {item.fecha_vencimiento}</div>}
+                        </div>
+                        <Trash2 size={16} color="#ef4444" onClick={() => deleteChecklistItem(item.id)} style={{cursor:'pointer'}}/>
+                    </div>
+                ))}
+            </div>
+
+            <div style={{marginTop:'auto', display:'flex', gap:10, paddingTop:20}}>
+                <button type="button" onClick={() => hasChanges ? confirm("¿Cerrar sin guardar?") && cerrarModal() : cerrarModal()} style={{flex:1, padding:12, borderRadius:8, border:'1px solid #ddd', cursor:'pointer'}}>Cancelar</button>
+                <button type="submit" disabled={loading} style={{flex:2, padding:12, borderRadius:8, border:'none', backgroundColor:'#111827', color:'white', fontWeight:'bold', cursor:'pointer'}}>
+                    <Save size={18} style={{display:'inline', marginRight:8}}/> Guardar Nota
+                </button>
+            </div>
         </div>
     </form>
   )

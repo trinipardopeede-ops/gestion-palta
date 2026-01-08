@@ -12,11 +12,10 @@ import DashboardCosecha from './DashboardCosecha'
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('sectores')
 
-  // Se eliminó la pestaña "Trabajos" (Labores) ya que era redundante con el menú lateral
   const tabs = [
-    { id: 'sectores', label: 'Sectores', icon: <LayoutDashboard size={18} /> },
+    { id: 'sectores', label: 'Campo', icon: <LayoutDashboard size={18} /> },
     { id: 'finanzas', label: 'Finanzas', icon: <Wallet size={18} /> },
-    { id: 'cosecha', label: 'Cosecha', icon: <Sprout size={18} /> }
+    { id: 'cosecha', label: 'Producción', icon: <Sprout size={18} /> }
   ]
 
   const renderContent = () => {
@@ -30,21 +29,31 @@ function Dashboard() {
 
   const styles = {
     container: { padding: '20px', maxWidth: '1400px', margin: '0 auto' },
-    header: { marginBottom: '25px' },
+    
+    // Header flex para alinear título izq y tabs der
+    header: { 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: '25px',
+        flexWrap: 'wrap',
+        gap: '15px'
+    },
+    titleGroup: { display: 'flex', flexDirection: 'column' },
     title: { fontSize: '1.8rem', fontWeight: 'bold', color: '#111827', margin: 0 },
-    subtitle: { color: '#6b7280', marginTop: '5px' },
+    subtitle: { color: '#6b7280', marginTop: '5px', fontSize:'0.9rem' },
     
     tabsContainer: { 
-        display: 'flex', gap: '8px', padding: '5px', backgroundColor: '#e5e7eb', 
-        borderRadius: '12px', width: 'fit-content', marginBottom: '30px' 
+        display: 'flex', gap: '5px', padding: '4px', backgroundColor: '#e5e7eb', 
+        borderRadius: '10px', height: 'fit-content'
     },
     tab: (isActive) => ({
       display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '10px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+      padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
       fontWeight: '600', fontSize: '0.9rem', transition: 'all 0.2s',
       backgroundColor: isActive ? 'white' : 'transparent',
       color: isActive ? '#1f2937' : '#6b7280',
-      boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
+      boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
     }),
     contentArea: { animation: 'fadeIn 0.3s ease-in-out' }
   }
@@ -52,21 +61,24 @@ function Dashboard() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Panel de Control</h1>
-        <div style={styles.subtitle}>Resumen general de tu campo</div>
-      </div>
+        <div style={styles.titleGroup}>
+            <h1 style={styles.title}>Dashboard</h1>
+            <div style={styles.subtitle}>Visión general del negocio</div>
+        </div>
 
-      <div style={styles.tabsContainer}>
-        {tabs.map(tab => (
-          <button 
-            key={tab.id} 
-            onClick={() => setActiveTab(tab.id)}
-            style={styles.tab(activeTab === tab.id)}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
+        {/* Pestañas ahora a la derecha */}
+        <div style={styles.tabsContainer}>
+            {tabs.map(tab => (
+            <button 
+                key={tab.id} 
+                onClick={() => setActiveTab(tab.id)}
+                style={styles.tab(activeTab === tab.id)}
+            >
+                {tab.icon}
+                {tab.label}
+            </button>
+            ))}
+        </div>
       </div>
 
       <div style={styles.contentArea}>
@@ -83,74 +95,112 @@ ARCHIVO: src/pages/Cosechas.jsx
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { Sprout, Calendar, User, Plus, Trash2, Pencil, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
+import { 
+  Sprout, Calendar, User, Plus, Trash2, Pencil, MapPin, 
+  ChevronDown, ChevronUp, Scale, ArrowRight, Layers, List, 
+  ArrowDown, ArrowUp, ArrowUpDown 
+} from 'lucide-react'
 import Modal from '../components/Modal'
 import NuevaCosecha from './NuevaCosecha'
 
 // Helpers
-const formatearDinero = (monto) => '$ ' + Math.round(monto).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-const formatearFecha = (f) => f ? f.split('-').reverse().join('/') : '-'
+const formatearDinero = (monto) => '$ ' + Math.round(monto || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
 
 function Cosechas() {
-  const [dataOriginal, setDataOriginal] = useState([])
-  const [gruposCosechas, setGruposCosechas] = useState({})
+  const [dataOriginal, setDataOriginal] = useState([]) 
+  const [dataProcesada, setDataProcesada] = useState([]) 
+  const [gruposCosechas, setGruposCosechas] = useState({}) 
   const [loading, setLoading] = useState(true)
-  
-  // Estado para controlar expansión (Por defecto todo cerrado/false)
   const [tarjetasExpandidas, setTarjetasExpandidas] = useState({})
 
-  // Filtros
-  const [anioSeleccionado, setAnioSeleccionado] = useState('') // Vacio = Todos
+  // Filtros y Controles
+  const [anioSeleccionado, setAnioSeleccionado] = useState('')
   const [aniosDisponibles, setAniosDisponibles] = useState([])
+  
+  // ESTADOS DE VISTA
+  const [vistaAgrupada, setVistaAgrupada] = useState(true) 
+  const [orden, setOrden] = useState('fecha_desc') // fecha_desc | fecha_asc | sector
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editarId, setEditarId] = useState(null)
 
   useEffect(() => { leerCosechas() }, [])
-  useEffect(() => { aplicarFiltros() }, [anioSeleccionado, dataOriginal])
+  
+  useEffect(() => { 
+      procesarDatos()
+  }, [dataOriginal, anioSeleccionado, orden, vistaAgrupada])
 
   async function leerCosechas() {
     setLoading(true)
-    const { data } = await supabase
-      .from('cosechas')
-      .select(`
-        *,
-        clientes ( nombre ),
-        sectores ( nombre, parcelas ( nombre ) ),
-        detalle_cosechas ( calibre, kilos, precio_kilo )
-      `)
-      .order('fecha', { ascending: false })
-    
-    if (data) {
-        const anios = [...new Set(data.map(item => new Date(item.fecha).getFullYear()))]
-        const aniosOrdenados = anios.sort((a,b) => b - a)
-        setAniosDisponibles(aniosOrdenados)
-        setDataOriginal(data)
+    try {
+        const { data, error } = await supabase
+          .from('cosechas')
+          .select(`
+            *,
+            clientes:clientes!fk_cosechas_cliente ( nombre ),
+            sectores:sectores!fk_cosechas_sector ( 
+                nombre, 
+                parcelas:parcelas!fk_sectores_parcela ( nombre ) 
+            ),
+            detalle_cosechas ( calibre, kilos, precio_kilo )
+          `)
+          .order('fecha', { ascending: false })
+        
+        if (error) throw error
+
+        if (data) {
+            const anios = [...new Set(data.map(item => item.fecha ? new Date(item.fecha).getFullYear() : null))].filter(a => a)
+            const aniosOrdenados = anios.sort((a,b) => b - a)
+            setAniosDisponibles(aniosOrdenados)
+            setDataOriginal(data)
+        }
+    } catch (err) {
+        console.error("Error al leer cosechas:", err.message)
+    } finally {
+        setLoading(false)
     }
-    setLoading(false)
   }
 
-  const aplicarFiltros = () => {
-      if (!dataOriginal.length) return
+  // Lógica de Ordenamiento y Agrupación
+  const procesarDatos = () => {
+      if (dataOriginal.length === 0) return
 
-      let filtrados = dataOriginal
-      
-      // Filtro de Año (Si es vacío, no filtra)
+      // 1. Filtrar por Año
+      let filtrados = [...dataOriginal]
       if (anioSeleccionado) {
-          filtrados = dataOriginal.filter(c => 
-              new Date(c.fecha).getFullYear() === parseInt(anioSeleccionado)
-          )
+          filtrados = filtrados.filter(c => c.fecha && new Date(c.fecha).getFullYear() === parseInt(anioSeleccionado))
       }
 
-      // Agrupación por Parcela
-      const agrupado = filtrados.reduce((acc, item) => {
-          const nombreParcela = item.sectores?.parcelas?.nombre || 'Sin Parcela Asignada'
-          if (!acc[nombreParcela]) acc[nombreParcela] = []
-          acc[nombreParcela].push(item)
-          return acc
-      }, {})
-      
-      setGruposCosechas(agrupado)
+      // 2. Ordenar
+      filtrados.sort((a, b) => {
+          if (orden === 'fecha_desc') return new Date(b.fecha) - new Date(a.fecha)
+          if (orden === 'fecha_asc') return new Date(a.fecha) - new Date(b.fecha)
+          if (orden === 'sector') {
+              const nombreA = a.sectores?.nombre || ''
+              const nombreB = b.sectores?.nombre || ''
+              return nombreA.localeCompare(nombreB)
+          }
+          return 0
+      })
+
+      // 3. Agrupar
+      if (vistaAgrupada) {
+          const agrupado = filtrados.reduce((acc, item) => {
+              const nombreParcela = item.sectores?.parcelas?.nombre || 'Sin Parcela Asignada'
+              if (!acc[nombreParcela]) acc[nombreParcela] = []
+              acc[nombreParcela].push(item)
+              return acc
+          }, {})
+          setGruposCosechas(agrupado)
+      } else {
+          setDataProcesada(filtrados)
+      }
+  }
+
+  // Manejador inteligente del botón Fecha
+  const toggleOrdenFecha = () => {
+      if (orden === 'fecha_desc') setOrden('fecha_asc')
+      else setOrden('fecha_desc')
   }
 
   const toggleExpansion = (id) => {
@@ -159,7 +209,6 @@ function Cosechas() {
 
   const abrirCrear = () => { setEditarId(null); setModalOpen(true) }
   const abrirEditar = (id) => { setEditarId(id); setModalOpen(true) }
-  
   const handleGuardado = () => { setModalOpen(false); leerCosechas() }
 
   const eliminar = async (id) => {
@@ -169,51 +218,193 @@ function Cosechas() {
     }
   }
 
+  const getFechaParts = (fechaString) => {
+      if (!fechaString) return { dia: '-', mes: '-', ano: '-' }
+      const date = new Date(fechaString)
+      const userTimezoneOffset = date.getTimezoneOffset() * 60000
+      const fechaCorrecta = new Date(date.getTime() + userTimezoneOffset)
+      
+      const dia = fechaCorrecta.getDate()
+      const mes = fechaCorrecta.toLocaleString('es-ES', { month: 'short' }).toUpperCase().replace('.', '')
+      const ano = fechaCorrecta.getFullYear()
+      return { dia, mes, ano }
+  }
+
   const renderBadge = (destino) => {
     const stylesBadge = {
-        'Venta': { bg: '#dcfce7', color: '#166534', icon: '💰' },
-        'Consumo Interno': { bg: '#ffedd5', color: '#9a3412', icon: '🏠' },
-        'Mermas': { bg: '#fee2e2', color: '#991b1b', icon: '🗑️' }
+        'Venta': { bg: '#dcfce7', color: '#166534', border: '#86efac' },
+        'Consumo Interno': { bg: '#ffedd5', color: '#9a3412', border: '#fdba74' },
+        'Mermas': { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' }
     }
     const config = stylesBadge[destino] || stylesBadge['Venta']
     return (
-        <span style={{ backgroundColor: config.bg, color: config.color, padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-flex', alignItems:'center', gap:4, marginBottom: '8px' }}>
-            {config.icon} {destino}
+        <span style={{ 
+            backgroundColor: config.bg, color: config.color, border: `1px solid ${config.border}`,
+            padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', 
+            textTransform: 'uppercase', letterSpacing: '0.5px'
+        }}>
+            {destino}
         </span>
     )
   }
 
+  // Componente Tarjeta
+  const CosechaCard = ({ c }) => {
+      const totalDinero = (c.kilos || 0) * (c.precio_kilo || 0)
+      const isExpanded = tarjetasExpandidas[c.id]
+      const fechaObj = getFechaParts(c.fecha)
+
+      return (
+          <div style={styles.card}>
+               <div style={styles.cardHeader}>
+                  {/* CAJA FECHA AUMENTADA */}
+                  <div style={styles.dateBox}>
+                      <span style={styles.dayText}>{fechaObj.dia}</span>
+                      <span style={styles.monthText}>{fechaObj.mes}</span>
+                      <span style={styles.yearText}>{fechaObj.ano}</span>
+                  </div>
+
+                  <div style={styles.infoBox}>
+                      <div style={styles.kilosRow}>
+                          <Scale size={20} color="#374151"/>
+                          <span style={styles.kilosBig}>{c.kilos ? c.kilos.toLocaleString('es-CL') : '0'}</span>
+                          <span style={styles.unitText}>Kg</span>
+                      </div>
+                      <div style={styles.sectorRow}>
+                          {c.sectores?.nombre || 'Sector Borrado'}
+                          {!vistaAgrupada && <span style={{fontSize:'0.75rem', color:'#9ca3af', fontWeight:'normal', marginLeft:5}}>({c.sectores?.parcelas?.nombre})</span>}
+                      </div>
+                      {c.destino === 'Venta' && (
+                          <div style={styles.clientRow}><User size={14}/> {c.clientes?.nombre || 'Sin Cliente'}</div>
+                       )}
+                  </div>
+
+                  <div style={styles.actionBox}>
+                      {renderBadge(c.destino)}
+                      <div style={styles.actionButtons}>
+                          <button onClick={() => abrirEditar(c.id)} style={styles.btnIcon} title="Editar"><Pencil size={18}/></button>
+                          <button onClick={() => eliminar(c.id)} style={{...styles.btnIcon, color:'#ef4444'}} title="Eliminar"><Trash2 size={18}/></button>
+                          <button onClick={() => toggleExpansion(c.id)} style={{...styles.btnIcon, color: isExpanded ? '#2563eb' : '#9ca3af', backgroundColor: isExpanded ? '#eff6ff' : 'transparent', borderRadius:'50%'}}>
+                              {isExpanded ? <ChevronUp size={22}/> : <ChevronDown size={22}/>}
+                          </button>
+                      </div>
+                  </div>
+              </div>
+
+              {isExpanded && (
+                  <div style={styles.detailsContainer}>
+                      {c.detalle_cosechas && c.detalle_cosechas.length > 0 ? (
+                          <table style={styles.miniTable}>
+                              <thead>
+                                  <tr>
+                                      <th style={styles.th}>Calibre</th>
+                                      <th style={{...styles.th, textAlign:'right'}}>Cantidad</th>
+                                      {c.destino === 'Venta' && <th style={{...styles.th, textAlign:'right'}}>Precio ($)</th>}
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  {c.detalle_cosechas.map((d, idx) => (
+                                      <tr key={idx}>
+                                          <td style={styles.td}>
+                                              <div style={{display:'flex', alignItems:'center', gap:6}}>
+                                                  <div style={{width:6, height:6, borderRadius:'50%', backgroundColor:'#16a34a'}}></div>
+                                                  {d.calibre}
+                                              </div>
+                                          </td>
+                                          <td style={{...styles.td, textAlign:'right', fontWeight:'500'}}>{d.kilos} Kg</td>
+                                          {c.destino === 'Venta' && <td style={{...styles.td, textAlign:'right', color:'#16a34a'}}>{formatearDinero(d.precio_kilo)}</td>}
+                                      </tr>
+                                  ))}
+                              </tbody>
+                          </table>
+                      ) : (
+                          <div style={{fontSize:'0.8rem', fontStyle:'italic', color:'#9ca3af', padding:'15px 0', textAlign:'center'}}>
+                              Sin detalle de calibres registrado.
+                          </div>
+                      )}
+                      
+                      {c.comentarios && (
+                          <div style={{fontSize:'0.85rem', color:'#4b5563', marginTop:'15px', padding:'10px', backgroundColor:'#fff', borderRadius:'6px', border:'1px solid #e5e7eb', display:'flex', gap:8}}>
+                              <span style={{fontWeight:'bold'}}>Nota:</span> {c.comentarios}
+                          </div>
+                      )}
+
+                      {c.destino === 'Venta' && (
+                          <div style={styles.moneyBlock}>
+                                <span style={{fontSize:'0.9rem', color:'#6b7280', display:'flex', alignItems:'center', gap:5}}>
+                                    Total Venta <ArrowRight size={14}/>
+                                </span>
+                              <span style={{fontWeight:'800', color:'#15803d', fontSize:'1.2rem'}}>{formatearDinero(totalDinero)}</span>
+                          </div>
+                      )}
+                  </div>
+              )}
+          </div>
+      )
+  }
+
   const styles = {
     container: { width: '90%', maxWidth: '1400px', margin: '0 auto', padding: '10px 20px' },
-    
-    // Header Compacto
-    header: { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '20px', height: '50px' },
+    header: { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '20px', flexWrap:'wrap', gap:15 },
     title: { fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', display:'flex', alignItems:'center', gap:10, margin:0 },
     
-    controls: { display: 'flex', gap: '10px', alignItems: 'center' },
-    selectYear: { padding: '8px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: 'white', color: '#374151', cursor: 'pointer', fontSize:'0.9rem' },
-    btnNew: { border: 'none', cursor: 'pointer', textDecoration: 'none', backgroundColor: '#16a34a', color: 'white', padding: '8px 16px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '0.9rem' },
+    // BARRA DE CONTROLES
+    controlsBar: { display: 'flex', gap: '15px', alignItems: 'center' },
     
-    // Cards
+    // Grupo de Botones (Toggle Group)
+    controlGroup: { display:'flex', gap:1, backgroundColor:'white', border:'1px solid #d1d5db', borderRadius:8, overflow:'hidden' },
+    
+    // Estilo Botón Toggle
+    btnToggle: (active) => ({
+        padding:'8px 12px', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:6, fontSize:'0.85rem',
+        backgroundColor: active ? '#eff6ff' : 'white', color: active ? '#2563eb' : '#6b7280', fontWeight: active ? 'bold' : 'normal',
+        transition: 'background-color 0.1s'
+    }),
+
+    // Etiqueta pequeña para los grupos de botones
+    groupLabel: { fontSize: '0.75rem', fontWeight:'bold', color:'#9ca3af', marginBottom:4, display:'block', textTransform:'uppercase' },
+
+    selectControl: { padding: '8px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: 'white', color: '#374151', cursor: 'pointer', fontSize:'0.9rem' },
+    btnNew: { border: 'none', cursor: 'pointer', backgroundColor: '#16a34a', color: 'white', padding: '8px 16px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '0.9rem' },
+    
     parcelaSection: { marginBottom: '30px' },
     parcelaTitle: { fontSize: '1.1rem', fontWeight: 'bold', color: '#374151', borderBottom: '1px solid #e5e7eb', paddingBottom: '10px', marginBottom: '15px', display:'flex', alignItems:'center', gap:'8px' },
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '15px' },
+    
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '20px' },
     card: { backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb', overflow:'hidden', display:'flex', flexDirection:'column' },
+    cardHeader: { padding: '0', backgroundColor: '#fff', display:'grid', gridTemplateColumns: '85px 1fr auto', minHeight: '90px' },
     
-    cardHeader: { padding: '15px', backgroundColor: '#fff', display:'flex', justifyContent:'space-between', alignItems:'flex-start' },
-    sectorName: { fontSize: '1rem', fontWeight: 'bold', color: '#16a34a' },
-    kilosBig: { fontSize: '1.4rem', fontWeight: 'bold', color: '#1f2937' },
-    metaRow: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#6b7280', marginTop:'4px' },
+    // FECHA GRANDE
+    dateBox: { 
+        backgroundColor: '#f3f4f6', 
+        borderRight: '1px solid #e5e7eb', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        padding: '10px 5px',
+        minWidth: '85px'
+    },
+    dayText: { fontSize: '1.8rem', fontWeight: '800', color: '#1f2937', lineHeight: 1 },
+    monthText: { fontSize: '0.75rem', fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', marginTop: 2 },
+    yearText: { fontSize: '1.1rem', fontWeight: '800', color: '#9ca3af', marginTop: '4px' }, // AÑO AUMENTADO
+
+    infoBox: { padding: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 },
+    kilosRow: { display: 'flex', alignItems: 'baseline', gap: 8 },
+    kilosBig: { fontSize: '1.6rem', fontWeight: '800', color: '#111827' },
+    unitText: { fontSize: '0.9rem', color: '#6b7280', fontWeight: '500' },
+    sectorRow: { display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.95rem', fontWeight: '600', color: '#16a34a' },
+    clientRow: { display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: '#4b5563', marginTop: 4 },
+
+    actionBox: { padding: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end' },
+    actionButtons: { display: 'flex', gap: 8 },
+    btnIcon: { background:'none', border:'none', cursor:'pointer', color:'#9ca3af', padding:'4px', display:'flex', alignItems:'center' },
     
-    // Table Details
-    detailsContainer: { padding: '0 15px 15px 15px', borderTop:'1px dashed #e5e7eb' },
-    miniTable: { width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse', marginTop:10 },
-    td: { padding: '4px 0', borderBottom: '1px solid #f3f4f6', color: '#374151' },
-    th: { padding: '4px 0', textAlign: 'left', fontWeight: 'bold', color: '#9ca3af', borderBottom: '1px solid #e5e7eb', fontSize:'0.75rem' },
-    
-    moneyBlock: { marginTop: '10px', paddingTop: '10px', display:'flex', justifyContent:'space-between', alignItems:'center' },
-    actions: { display:'flex', gap:'5px' },
-    btnIcon: { background:'none', border:'none', cursor:'pointer', color:'#9ca3af', padding:'4px', display:'flex', alignItems:'center' }
+    detailsContainer: { padding: '0 20px 20px 20px', backgroundColor: '#fafafa', borderTop:'1px dashed #e5e7eb' },
+    miniTable: { width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse', marginTop:15 },
+    td: { padding: '8px 0', borderBottom: '1px solid #e5e7eb', color: '#374151' },
+    th: { padding: '8px 0', textAlign: 'left', fontWeight: 'bold', color: '#9ca3af', borderBottom: '1px solid #d1d5db', fontSize:'0.75rem', textTransform:'uppercase' },
+    moneyBlock: { marginTop: '15px', paddingTop: '10px', display:'flex', justifyContent:'space-between', alignItems:'center', borderTop: '2px solid #e5e7eb' },
   }
 
   return (
@@ -221,110 +412,91 @@ function Cosechas() {
       <div style={styles.header}>
         <h1 style={styles.title}><Sprout color="#16a34a" size={28} /> Cosechas</h1>
 
-        <div style={styles.controls}>
-            <label style={{fontSize:'0.85rem', color:'#6b7280'}}>Año:</label>
-            <select 
-                style={styles.selectYear} 
-                value={anioSeleccionado} 
-                onChange={(e) => setAnioSeleccionado(e.target.value)}
-            >
-                <option value="">Todos</option>
-                {aniosDisponibles.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
+        <div style={styles.controlsBar}>
+            {/* GRUPO 1: VISTA */}
+            <div>
+                <span style={styles.groupLabel}>Vista</span>
+                <div style={styles.controlGroup}>
+                    <button onClick={() => setVistaAgrupada(true)} style={styles.btnToggle(vistaAgrupada)} title="Agrupar por Parcela">
+                        <Layers size={16}/> Agrupado
+                    </button>
+                    <button onClick={() => setVistaAgrupada(false)} style={styles.btnToggle(!vistaAgrupada)} title="Lista Cronológica">
+                        <List size={16}/> Lista
+                    </button>
+                </div>
+            </div>
+
+            {/* GRUPO 2: ORDENAMIENTO (NUEVO DISEÑO CON BOTONES) */}
+            <div>
+                <span style={styles.groupLabel}>Ordenar por</span>
+                <div style={styles.controlGroup}>
+                    {/* BOTÓN FECHA (ALTERNABLE) */}
+                    <button 
+                        onClick={toggleOrdenFecha} 
+                        style={styles.btnToggle(orden.includes('fecha'))} 
+                        title={orden === 'fecha_asc' ? "Más antiguos primero" : "Más recientes primero"}
+                    >
+                        <Calendar size={16}/> 
+                        {orden === 'fecha_asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>}
+                        Fecha
+                    </button>
+
+                    {/* BOTÓN SECTOR */}
+                    <button 
+                        onClick={() => setOrden('sector')} 
+                        style={styles.btnToggle(orden === 'sector')} 
+                        title="Ordenar alfabéticamente por Sector"
+                    >
+                        <ArrowUpDown size={16}/> Sector
+                    </button>
+                </div>
+            </div>
+
+            {/* FILTRO AÑO */}
+            <div>
+                <span style={styles.groupLabel}>Filtro</span>
+                <select 
+                    style={styles.selectControl} 
+                    value={anioSeleccionado} 
+                    onChange={(e) => setAnioSeleccionado(e.target.value)}
+                >
+                    <option value="">Año: Todos</option>
+                    {aniosDisponibles.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+            </div>
             
-            <button onClick={abrirCrear} style={styles.btnNew}>
-                <Plus size={18} /> Nueva
-            </button>
+            <div style={{marginTop: 15}}> {/* Alineación con botones */}
+                <button onClick={abrirCrear} style={styles.btnNew}>
+                    <Plus size={18} /> Nueva
+                </button>
+            </div>
         </div>
       </div>
 
       {loading && <div style={{padding:'20px', color:'#9ca3af'}}>Cargando registros...</div>}
 
-      {!loading && Object.keys(gruposCosechas).length === 0 && (
-          <div style={{textAlign:'center', padding:'40px', color:'#9ca3af', border:'2px dashed #e5e7eb', borderRadius:'12px'}}>
-              No hay cosechas registradas.
+      {!loading && dataProcesada.length === 0 && Object.keys(gruposCosechas).length === 0 && (
+          <div style={{textAlign:'center', padding:'40px', color:'#9ca3af', border:'2px dashed #e5e7eb', borderRadius:'12px', backgroundColor:'#f9fafb'}}>
+              No hay cosechas registradas con estos filtros.
           </div>
       )}
 
-      {Object.keys(gruposCosechas).sort().map(parcela => (
+      {/* VISTA 1: AGRUPADA POR PARCELA */}
+      {!loading && vistaAgrupada && Object.keys(gruposCosechas).sort().map(parcela => (
           <div key={parcela} style={styles.parcelaSection}>
               <h3 style={styles.parcelaTitle}><MapPin size={18} color="#16a34a"/> {parcela}</h3>
-              
               <div style={styles.grid}>
-                 {gruposCosechas[parcela].map(c => {
-                      const totalDinero = (c.kilos || 0) * (c.precio_kilo || 0)
-                      const isExpanded = tarjetasExpandidas[c.id] // Por defecto false/undefined
-
-                      return (
-                          <div key={c.id} style={styles.card}>
-                               <div style={styles.cardHeader}>
-                                  <div>
-                                      {renderBadge(c.destino)}
-                                      <div style={styles.kilosBig}>{c.kilos} Kg</div>
-                                      <div style={styles.sectorName}>{c.sectores?.nombre}</div>
-                                      <div style={styles.metaRow}><Calendar size={14}/> {formatearFecha(c.fecha)}</div>
-                                      {c.destino === 'Venta' && (
-                                          <div style={styles.metaRow}>
-                                              <User size={14}/> {c.clientes?.nombre || 'Sin Cliente'}
-                                          </div>
-                                       )}
-                                  </div>
-                                  <div style={styles.actions}>
-                                      <button onClick={() => toggleExpansion(c.id)} style={styles.btnIcon} title={isExpanded ? "Ocultar detalles" : "Ver detalles"}>
-                                          {isExpanded ? <ChevronUp size={20} color="#3b82f6"/> : <ChevronDown size={20}/>}
-                                      </button>
-                                      
-                                      <button onClick={() => abrirEditar(c.id)} style={styles.btnIcon}><Pencil size={16}/></button>
-                                      <button onClick={() => eliminar(c.id)} style={{...styles.btnIcon, color:'#ef4444'}}><Trash2 size={16}/></button>
-                                  </div>
-                              </div>
-
-                              {/* SOLO SE MUESTRA SI ESTÁ EXPANDIDO */}
-                              {isExpanded && (
-                                  <div style={styles.detailsContainer}>
-                                      {c.detalle_cosechas && c.detalle_cosechas.length > 0 ? (
-                                          <table style={styles.miniTable}>
-                                              <thead>
-                                                  <tr>
-                                                      <th style={styles.th}>Calibre</th>
-                                                      <th style={{...styles.th, textAlign:'right'}}>Kg</th>
-                                                      {c.destino === 'Venta' && <th style={{...styles.th, textAlign:'right'}}>$ Unit</th>}
-                                                  </tr>
-                                              </thead>
-                                              <tbody>
-                                                  {c.detalle_cosechas.map((d, idx) => (
-                                                      <tr key={idx}>
-                                                          <td style={styles.td}>{d.calibre}</td>
-                                                          <td style={{...styles.td, textAlign:'right'}}>{d.kilos}</td>
-                                                          {c.destino === 'Venta' && <td style={{...styles.td, textAlign:'right', color:'#16a34a'}}>{formatearDinero(d.precio_kilo)}</td>}
-                                                      </tr>
-                                                  ))}
-                                              </tbody>
-                                          </table>
-                                      ) : (
-                                          <div style={{fontSize:'0.8rem', fontStyle:'italic', color:'#9ca3af', padding:'10px 0'}}>Sin detalle de calibres</div>
-                                      )}
-                                      
-                                      {c.comentarios && (
-                                          <div style={{fontSize:'0.8rem', color:'#6b7280', marginTop:'10px', fontStyle:'italic', backgroundColor:'#f9fafb', padding:5, borderRadius:4}}>
-                                              "{c.comentarios}"
-                                          </div>
-                                      )}
-
-                                      {c.destino === 'Venta' && (
-                                          <div style={styles.moneyBlock}>
-                                                <span style={{fontSize:'0.8rem', color:'#6b7280'}}>Total Venta</span>
-                                              <span style={{fontWeight:'bold', color:'#15803d', fontSize:'1rem'}}>{formatearDinero(totalDinero)}</span>
-                                          </div>
-                                      )}
-                                  </div>
-                              )}
-                          </div>
-                      )
-                  })}
+                 {gruposCosechas[parcela].map(c => <CosechaCard key={c.id} c={c} />)}
               </div>
           </div>
       ))}
+
+      {/* VISTA 2: LISTA PLANA (CRONOLÓGICA) */}
+      {!loading && !vistaAgrupada && (
+          <div style={styles.grid}>
+              {dataProcesada.map(c => <CosechaCard key={c.id} c={c} />)}
+          </div>
+      )}
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editarId ? "Editar Cosecha" : "Registrar Nueva Cosecha"}>
         {modalOpen && <NuevaCosecha idCosecha={editarId} cerrarModal={() => setModalOpen(false)} alGuardar={handleGuardado} />}
@@ -341,13 +513,14 @@ ARCHIVO: src/pages/Labores.jsx
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { 
-  Shovel, Plus, Trash2, Pencil, ArrowUpDown, Filter, Map, Layers, User,
-  Droplets, TestTube, Scissors, Leaf, Hammer, ClipboardList, Package, CircleDot
+  Shovel, Plus, Trash2, Pencil, ArrowUpDown, Filter, Map, User,
+  Droplets, TestTube, Scissors, Leaf, Hammer, ClipboardList, Package, CircleDot, LayoutGrid, Calendar
 } from 'lucide-react'
 import Modal from '../components/Modal'
 import NuevaLabor from './NuevaLabor'
 
-const ICONOS = {
+// Iconos visuales
+const ICONOS_VISUALES = {
   'Riego': <Droplets size={18} color="#3b82f6"/>,
   'Fertilización': <TestTube size={18} color="#8b5cf6"/>,
   'Poda': <Scissors size={18} color="#f59e0b"/>,
@@ -358,18 +531,38 @@ const ICONOS = {
   'Otros': <ClipboardList size={18} color="#9ca3af"/>
 }
 
+// Diccionario Texto
+const EMOJIS_TIPO = {
+  'Riego': '💧 Riego',
+  'Fertilización': '🧪 Fertilización',
+  'Poda': '✂️ Poda',
+  'Anillado': '⭕ Anillado',
+  'Fitosanitario': '💊 Fitosanitario',
+  'Mantenimiento': '🛠️ Mantenimiento',
+  'Limpieza': '🧹 Limpieza',
+  'Otros': '📋 Otros'
+}
+
 function Labores() {
   const [labores, setLabores] = useState([])
   const [loading, setLoading] = useState(true)
   
-  // Listas filtros
+  // Listas filtros y Maestros
   const [listaParcelas, setListaParcelas] = useState([])
+  const [listaSectores, setListaSectores] = useState([]) 
   const [listaProveedores, setListaProveedores] = useState([])
+  const [aniosDisponibles, setAniosDisponibles] = useState([])
+  
+  // Mapas
+  const [mapaSectores, setMapaSectores] = useState({})
+  const [mapaParcelas, setMapaParcelas] = useState({})
 
-  // Filtros Estado
+  // Estado Filtros
   const [filtros, setFiltros] = useState({
+      anio: new Date().getFullYear().toString(),
       tipo: 'Todos',
       parcela: 'Todos',
+      sector: 'Todos',
       proveedor: 'Todos',
       mes: 'Todos'
   })
@@ -386,27 +579,34 @@ function Labores() {
   async function cargarDatos() {
     setLoading(true)
     
-    // CONSULTA SEGURA (Evita el 404 si la tabla existe)
-    // El 404 anterior era porque Supabase no encontraba la tabla o las relaciones.
-    // Asegúrate de haber corrido el SQL que te envié.
+    // 1. Cargar Maestros
+    const { data: parc } = await supabase.from('parcelas').select('id, nombre').eq('activo', true).order('nombre')
+    const { data: sect } = await supabase.from('sectores').select('id, nombre, parcela_id').eq('activo', true).order('nombre')
+    const { data: prov } = await supabase.from('proveedores').select('id, nombre').eq('activo', true).order('nombre')
+    
+    setListaParcelas(parc || [])
+    setListaSectores(sect || [])
+    setListaProveedores(prov || [])
+
+    // Mapas
+    const mapSec = {}; (sect || []).forEach(s => mapSec[s.id] = s)
+    setMapaSectores(mapSec)
+    const mapPar = {}; (parc || []).forEach(p => mapPar[p.id] = p.nombre)
+    setMapaParcelas(mapPar)
+
+    // 2. Cargar Labores
     const { data, error } = await supabase
         .from('labores')
-        .select(`
-            *,
-            parcelas ( nombre ),
-            sectores ( nombre ),
-            proveedores ( nombre )
-        `)
+        .select(`*, proveedores ( nombre )`)
         .order('fecha', { ascending: false })
     
-    if (error) console.error("Error cargando labores:", error)
-    else setLabores(data || [])
-
-    // Cargar Listas
-    const { data: parc } = await supabase.from('parcelas').select('id, nombre')
-    setListaParcelas(parc || [])
-    const { data: prov } = await supabase.from('proveedores').select('id, nombre')
-    setListaProveedores(prov || [])
+    if (error) console.error("Error al cargar:", error)
+    else {
+        setLabores(data || [])
+        // Extraer años únicos para el filtro
+        const years = [...new Set((data || []).map(l => l.fecha.substring(0, 4)))].sort((a,b) => b - a)
+        setAniosDisponibles(years)
+    }
 
     setLoading(false)
   }
@@ -424,16 +624,26 @@ function Labores() {
 
   const getDataProcesada = () => {
       let data = labores.filter(l => {
+          if (filtros.anio !== 'Todos') {
+              const anioLabor = l.fecha.substring(0, 4)
+              if (anioLabor !== filtros.anio) return false
+          }
           if (filtros.tipo !== 'Todos' && l.tipo_labor !== filtros.tipo) return false
           
           if (filtros.parcela !== 'Todos') {
-              // Convertimos a string para comparar seguro
-              if (!l.parcela_id || l.parcela_id.toString() !== filtros.parcela) return false
+              const ids = l.sectores_ids || []
+              const pertenece = ids.some(id => mapaSectores[id]?.parcela_id.toString() === filtros.parcela)
+              if (!pertenece) return false
+          }
+
+          if (filtros.sector !== 'Todos') {
+               const ids = l.sectores_ids || []
+               if (!ids.includes(parseInt(filtros.sector))) return false
           }
 
           if (filtros.proveedor !== 'Todos') {
               if (filtros.proveedor === 'Interno') {
-                  if (l.proveedor_id) return false
+                  if (l.proveedor_id) return false 
               } else {
                   if (!l.proveedor_id || l.proveedor_id.toString() !== filtros.proveedor) return false
               }
@@ -449,8 +659,11 @@ function Labores() {
       return data.sort((a, b) => {
           let valA = a[sortConfig.key]
           let valB = b[sortConfig.key]
-          if (sortConfig.key === 'ubicacion') valA = a.parcelas?.nombre || ''
-          if (sortConfig.key === 'proveedor') valA = a.proveedores?.nombre || 'Interno'
+          
+          if (sortConfig.key === 'costo_total') {
+             valA = Number(valA); valB = Number(valB);
+          }
+
           if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1
           if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1
           return 0
@@ -460,25 +673,30 @@ function Labores() {
   const dataFinal = getDataProcesada()
 
   const styles = {
-    container: { width: '90%', maxWidth: '1400px', margin: '0 auto', padding: '20px 0' },
+    container: { width: '95%', maxWidth: '1600px', margin: '0 auto', padding: '20px 0' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     title: { fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', display:'flex', alignItems:'center', gap:10 },
     
     filterBar: { display: 'flex', gap: 12, alignItems: 'center', marginBottom: 20, flexWrap:'wrap', backgroundColor: '#f9fafb', padding: '15px', borderRadius: '12px', border: '1px solid #e5e7eb' },
-    labelFilter: { fontSize: '0.85rem', fontWeight: 'bold', color: '#4b5563', marginRight: 5 },
+    labelFilter: { fontSize: '0.85rem', fontWeight: 'bold', color: '#4b5563', marginRight: 5, display:'flex', alignItems:'center', gap:5 },
     selectControl: { padding: '8px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem', color: '#374151', minWidth: 120 },
 
     tableContainer: { backgroundColor: 'white', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden' },
-    table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' },
+    table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', tableLayout: 'fixed' }, 
+    
     th: { textAlign: 'left', padding: '12px 15px', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600, cursor:'pointer' },
-    td: { padding: '10px 15px', borderBottom: '1px solid #f3f4f6', color: '#374151', verticalAlign:'middle' },
-    badge: { fontSize:'0.75rem', padding:'2px 8px', borderRadius:10, backgroundColor:'#f3f4f6', border:'1px solid #e5e7eb', display:'inline-flex', alignItems:'center', gap:5 },
-    insumoChip: { fontSize:'0.7rem', color:'#6b7280', display:'block' }
+    thRight: { textAlign: 'right', padding: '12px 15px', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600, cursor:'pointer' },
+    
+    td: { padding: '10px 15px', borderBottom: '1px solid #f3f4f6', color: '#374151', verticalAlign:'middle', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' },
+    tdRight: { padding: '10px 15px', borderBottom: '1px solid #f3f4f6', color: '#374151', verticalAlign:'middle', textAlign:'right', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' },
+    
+    insumoChip: { fontSize:'0.8rem', color:'#4b5563', display:'block', marginBottom: 2 }, 
+    sectorsCell: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', display: 'block' }
   }
 
-  const ThSort = ({ k, label }) => (
-      <th style={styles.th} onClick={() => handleSort(k)}>
-          <div style={{display:'flex', alignItems:'center', gap:5}}>
+  const ThSort = ({ k, label, align = 'left', width }) => (
+      <th style={{...(align === 'right' ? styles.thRight : styles.th), width}} onClick={() => handleSort(k)}>
+          <div style={{display:'flex', alignItems:'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', gap:5}}>
               {label} {sortConfig.key === k && <ArrowUpDown size={14}/>}
           </div>
       </th>
@@ -488,32 +706,52 @@ function Labores() {
     <div style={styles.container}>
       <div style={styles.header}>
          <h1 style={styles.title}><Shovel size={28}/> Registro de Labores</h1>
-         <button 
-            onClick={() => { setEditId(null); setModalOpen(true) }} 
-            style={{ backgroundColor:'#1f2937', color:'white', border:'none', padding:'10px 20px', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}
-         >
+         <button onClick={() => { setEditId(null); setModalOpen(true) }} style={{ backgroundColor:'#1f2937', color:'white', border:'none', padding:'10px 20px', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
             <Plus size={18} /> Registrar Labor
          </button>
       </div>
 
       <div style={styles.filterBar}>
-          <div style={{display:'flex', alignItems:'center'}}>
+          <div>
+              <span style={styles.labelFilter}><Calendar size={14}/> Año:</span>
+              <select value={filtros.anio} onChange={e => setFiltros({...filtros, anio: e.target.value})} style={styles.selectControl}>
+                  <option value="Todos">Todos</option>
+                  {aniosDisponibles.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+          </div>
+          <div>
+              <span style={styles.labelFilter}>Mes:</span>
+              <select value={filtros.mes} onChange={e => setFiltros({...filtros, mes: e.target.value})} style={styles.selectControl}>
+                  <option value="Todos">Todos</option>
+                  {['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].map((mes, i) => (
+                      <option key={i} value={(i+1).toString()}>{i+1} - {mes}</option>
+                  ))}
+              </select>
+          </div>
+          <div>
               <span style={styles.labelFilter}><Filter size={14}/> Tipo:</span>
               <select value={filtros.tipo} onChange={e => setFiltros({...filtros, tipo: e.target.value})} style={styles.selectControl}>
                   <option value="Todos">Todos</option>
-                  {Object.keys(ICONOS).map(k => <option key={k} value={k}>{k}</option>)}
+                  {Object.keys(EMOJIS_TIPO).map(key => <option key={key} value={key}>{EMOJIS_TIPO[key]}</option>)}
               </select>
           </div>
-          
-          <div style={{display:'flex', alignItems:'center'}}>
+          <div>
               <span style={styles.labelFilter}><Map size={14}/> Parcela:</span>
               <select value={filtros.parcela} onChange={e => setFiltros({...filtros, parcela: e.target.value})} style={styles.selectControl}>
                   <option value="Todos">Todas</option>
                   {listaParcelas.map(p => <option key={p.id} value={p.id.toString()}>{p.nombre}</option>)}
               </select>
           </div>
-
-          <div style={{display:'flex', alignItems:'center'}}>
+          <div>
+              <span style={styles.labelFilter}><LayoutGrid size={14}/> Sector:</span>
+              <select value={filtros.sector} onChange={e => setFiltros({...filtros, sector: e.target.value})} style={styles.selectControl}>
+                  <option value="Todos">Todos</option>
+                  {listaSectores.filter(s => filtros.parcela === 'Todos' || s.parcela_id.toString() === filtros.parcela).map(s => (
+                      <option key={s.id} value={s.id.toString()}>{s.nombre}</option>
+                  ))}
+              </select>
+          </div>
+          <div>
               <span style={styles.labelFilter}><User size={14}/> Proveedor:</span>
               <select value={filtros.proveedor} onChange={e => setFiltros({...filtros, proveedor: e.target.value})} style={styles.selectControl}>
                   <option value="Todos">Todos</option>
@@ -521,97 +759,87 @@ function Labores() {
                   {listaProveedores.map(p => <option key={p.id} value={p.id.toString()}>{p.nombre}</option>)}
               </select>
           </div>
-
-          <div style={{display:'flex', alignItems:'center'}}>
-              <span style={styles.labelFilter}>Mes:</span>
-              <select value={filtros.mes} onChange={e => setFiltros({...filtros, mes: e.target.value})} style={styles.selectControl}>
-                  <option value="Todos">Todos</option>
-                  {[...Array(12)].map((_, i) => <option key={i} value={(i+1).toString()}>{i+1}</option>)}
-              </select>
-          </div>
-          
           <div style={{marginLeft:'auto', fontSize:'0.85rem', color:'#6b7280'}}>
-              <strong>{dataFinal.length}</strong> registros
+              Registros: <strong>{dataFinal.length}</strong>
           </div>
       </div>
 
       <div style={styles.tableContainer}>
           <table style={styles.table}>
+              <colgroup>
+                  <col style={{width: '110px'}} />
+                  <col style={{width: '14%'}} />
+                  <col style={{width: '14%'}} />
+                  <col style={{width: '20%'}} />
+                  <col style={{width: '130px'}} />
+                  <col style={{width: '22%'}} />
+                  <col style={{width: '140px'}} />
+                  <col style={{width: '80px'}} />
+              </colgroup>
               <thead>
                   <tr>
                       <ThSort label="Fecha" k="fecha"/>
                       <ThSort label="Labor" k="tipo_labor"/>
-                      <ThSort label="Ubicación" k="ubicacion"/>
-                      <ThSort label="Ejecutado Por" k="proveedor"/>
-                      <th style={styles.th}>Recursos / Insumos</th>
-                      <ThSort label="Costo Total" k="costo_total"/>
-                      <th style={{...styles.th, width:80}}></th>
+                      <th style={styles.th}>Parcela</th>
+                      <th style={styles.th}>Sectores</th>
+                      <ThSort label="Proveedor" k="proveedor"/>
+                      <th style={styles.th}>Insumos Usados</th>
+                      <ThSort label="Total" k="costo_total" align="right"/>
+                      <th style={styles.th}></th>
                   </tr>
               </thead>
               <tbody>
-                  {dataFinal.length === 0 ? (
-                      <tr><td colSpan="7" style={{textAlign:'center', padding:40, color:'#9ca3af'}}>No hay labores registradas.</td></tr>
-                  ) : dataFinal.map(l => (
-                      <tr key={l.id}>
-                          <td style={styles.td}>{fmtFecha(l.fecha)}</td>
-                          <td style={styles.td}>
-                              <div style={{display:'flex', alignItems:'center', gap:8, fontWeight:'600'}}>
-                                  {ICONOS[l.tipo_labor] || <Shovel size={18}/>}
-                                  {l.tipo_labor}
-                              </div>
-                              <div style={{fontSize:'0.75rem', color:'#6b7280', marginTop:2}}>{l.descripcion}</div>
-                          </td>
-                          <td style={styles.td}>
-                              <span style={styles.badge}>
-                                  {l.parcelas?.nombre || 'Desconocida'}
-                                  {l.sectores ? ` > ${l.sectores.nombre}` : ''}
-                              </span>
-                          </td>
-                          <td style={styles.td}>
-                              {l.proveedores?.nombre ? (
-                                  <span style={{fontWeight:'bold', color:'#374151'}}>{l.proveedores.nombre}</span>
-                              ) : (
-                                  <span style={{fontStyle:'italic', color:'#6b7280'}}>Personal Interno</span>
-                              )}
-                          </td>
-                          <td style={styles.td}>
-                              {l.detalles_insumos && Array.isArray(l.detalles_insumos) && l.detalles_insumos.length > 0 ? (
-                                  <div>
-                                      {l.detalles_insumos.slice(0, 2).map((ins, idx) => (
-                                          <span key={idx} style={styles.insumoChip}>
-                                              <Package size={10} style={{display:'inline', marginRight:3}}/> 
-                                              {ins.nombre} ({ins.cantidad} {ins.unidad})
-                                          </span>
-                                      ))}
-                                      {l.detalles_insumos.length > 2 && <span style={{fontSize:'0.7rem', color:'#2563eb'}}>+ {l.detalles_insumos.length - 2} más...</span>}
+                  {dataFinal.map(l => {
+                      const ids = l.sectores_ids || []
+                      const listaSectoresTxt = ids.map(id => mapaSectores[id]?.nombre || 'S?').join(', ')
+                      const parcelasIds = [...new Set(ids.map(id => mapaSectores[id]?.parcela_id).filter(Boolean))]
+                      let textoParcela = '-'
+                      if (parcelasIds.length === 1) textoParcela = mapaParcelas[parcelasIds[0]] || '?'
+                      else if (parcelasIds.length > 1) textoParcela = 'Varias / Mix'
+
+                      return (
+                          <tr key={l.id}>
+                              <td style={styles.td}>{fmtFecha(l.fecha)}</td>
+                              <td style={styles.td}>
+                                  <div style={{display:'flex', alignItems:'center', gap:8, fontWeight:'600'}}>
+                                      {ICONOS_VISUALES[l.tipo_labor]} {l.tipo_labor}
                                   </div>
-                              ) : (
-                                  <span style={{color:'#d1d5db', fontSize:'0.8rem'}}>-</span>
-                              )}
-                          </td>
-                          <td style={{...styles.td, fontFamily:'monospace', fontWeight:'bold', color:'#111827'}}>
-                              {fmtMoney(l.costo_total)}
-                          </td>
-                          <td style={styles.td}>
-                              <div style={{display:'flex', gap:5, justifyContent:'flex-end'}}>
-                                  <button onClick={() => { setEditId(l.id); setModalOpen(true) }} style={{border:'none', background:'none', color:'#2563eb', cursor:'pointer'}}><Pencil size={16}/></button>
-                                  <button onClick={() => eliminar(l.id)} style={{border:'none', background:'none', color:'#ef4444', cursor:'pointer'}}><Trash2 size={16}/></button>
-                              </div>
-                          </td>
-                      </tr>
-                  ))}
+                              </td>
+                              <td style={styles.td}><span style={{fontWeight:'bold', color:'#4b5563'}}>{textoParcela}</span></td>
+                              <td style={styles.td} title={listaSectoresTxt}><span style={styles.sectorsCell}>{listaSectoresTxt}</span></td>
+                              <td style={styles.td}>
+                                  {l.proveedores ? (
+                                     <span style={{display:'flex', alignItems:'center', gap:5}}><User size={14} color="#6b7280"/> {l.proveedores.nombre}</span>
+                                  ) : <span style={{color:'#9ca3af'}}>Interno</span>}
+                              </td>
+                              <td style={styles.td}>
+                                  {l.detalles_insumos?.length > 0 ? (
+                                      l.detalles_insumos.slice(0,3).map((i, idx) => (
+                                          <span key={idx} style={styles.insumoChip}>
+                                              <Package size={10} style={{display:'inline', marginRight:4}}/> 
+                                              {i.nombre} <strong>({i.cantidad} {i.unidad})</strong>
+                                          </span>
+                                      ))
+                                  ) : <span style={{color:'#d1d5db'}}>-</span>}
+                              </td>
+                              <td style={{...styles.tdRight, fontWeight:'bold', fontFamily:'monospace', fontSize:'1rem'}}>
+                                  {fmtMoney(l.costo_total)}
+                              </td>
+                              <td style={styles.td}>
+                                  <div style={{display:'flex', gap:5, justifyContent:'flex-end'}}>
+                                      <button onClick={() => { setEditId(l.id); setModalOpen(true) }} style={{border:'none', background:'none', color:'#2563eb', cursor:'pointer'}}><Pencil size={16}/></button>
+                                      <button onClick={() => eliminar(l.id)} style={{border:'none', background:'none', color:'#ef4444', cursor:'pointer'}}><Trash2 size={16}/></button>
+                                  </div>
+                              </td>
+                          </tr>
+                      )
+                  })}
               </tbody>
           </table>
       </div>
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editId ? "Editar Labor" : "Registrar Labor"}>
-         {modalOpen && (
-             <NuevaLabor 
-                idLabor={editId} 
-                cerrarModal={() => setModalOpen(false)} 
-                alGuardar={() => { setModalOpen(false); cargarDatos() }} 
-             />
-         )}
+         {modalOpen && <NuevaLabor idLabor={editId} cerrarModal={() => setModalOpen(false)} alGuardar={() => { setModalOpen(false); cargarDatos() }} />}
       </Modal>
     </div>
   )
@@ -989,166 +1217,345 @@ ARCHIVO: src/pages/Bodega.jsx
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { Package, Plus, ArrowUpCircle, ArrowDownCircle, Search, AlertTriangle, History } from 'lucide-react'
+import { 
+    Package, Plus, ArrowUpCircle, ArrowDownCircle, Search, AlertTriangle, 
+    History, Pencil, Trash2, Filter, Shovel, FileText 
+} from 'lucide-react'
 import Modal from '../components/Modal'
 import NuevoProducto from './NuevoProducto'
 import NuevoMovimientoBodega from './NuevoMovimientoBodega'
+import NuevaLabor from './NuevaLabor'
 
 function Bodega() {
   const [productos, setProductos] = useState([])
-  const [filtro, setFiltro] = useState('')
+  const [movimientos, setMovimientos] = useState([])
+  const [loading, setLoading] = useState(true)
   
-  // Modales
+  // TABS Y FILTROS
+  const [activeTab, setActiveTab] = useState('inventario')
+  const [filtroGlobal, setFiltroGlobal] = useState('')
+  const [filtrosHistorial, setFiltrosHistorial] = useState({ tipo: 'Todos' })
+  
+  // MODALES
   const [modalProductoOpen, setModalProductoOpen] = useState(false)
   const [modalMovimientoOpen, setModalMovimientoOpen] = useState(false)
+  const [modalLaborOpen, setModalLaborOpen] = useState(false)
   
-  const [productoEditar, setProductoEditar] = useState(null) // Para editar ficha
-  const [movimientoConfig, setMovimientoConfig] = useState(null) // { tipo: 'Entrada', productoId: 1 }
+  const [productoEditar, setProductoEditar] = useState(null) 
+  const [movimientoConfig, setMovimientoConfig] = useState(null) // { tipo, producto }
+  const [movimientoAEditar, setMovimientoAEditar] = useState(null) // El movimiento histórico a editar
+  
+  const [laborEditarId, setLaborEditarId] = useState(null)
 
   useEffect(() => {
-    cargarBodega()
+    cargarDatos()
   }, [])
 
-  async function cargarBodega() {
-    const { data } = await supabase.from('bodega_insumos').select('*').order('nombre')
-    if (data) setProductos(data)
+  async function cargarDatos() {
+    setLoading(true)
+    
+    const [resProductos, resMovimientos] = await Promise.allSettled([
+        supabase.from('bodega_insumos').select('*').eq('activo', true).order('nombre'),
+        supabase.from('bodega_movimientos')
+            .select(`
+                *,
+                bodega_insumos:bodega_insumos!fk_movimiento_insumo ( id, nombre, unidad_medida, stock_actual, costo_promedio ),
+                labores:labores!fk_movimiento_labor ( id, tipo_labor, descripcion )
+            `)
+            .order('fecha', { ascending: false })
+            .limit(200)
+    ])
+
+    if (resProductos.status === 'fulfilled' && resProductos.value.data) {
+        const rawData = resProductos.value.data
+        const unicos = [...new Map(rawData.map(item => [item['id'], item])).values()]
+        setProductos(unicos)
+    }
+
+    if (resMovimientos.status === 'fulfilled' && resMovimientos.value.data) {
+        setMovimientos(resMovimientos.value.data)
+    }
+    
+    setLoading(false)
   }
 
-  // --- ACCIONES ---
-  const abrirNuevoProducto = () => {
-    setProductoEditar(null)
-    setModalProductoOpen(true)
+  const parseOrigen = (mov) => {
+      if (mov.labor_id && mov.labores) {
+          return {
+              esSistema: true,
+              origenId: mov.labor_id,
+              tipo: 'Labor',
+              label: `Labor: ${mov.labores.tipo_labor}`,
+              icono: <Shovel size={14} color="#d97706"/>,
+              detalle: mov.labores.descripcion || 'Sin detalle'
+          }
+      }
+      return {
+          esSistema: false,
+          origenId: null,
+          tipo: 'Manual',
+          label: 'Directo Bodega',
+          icono: <Package size={14} color="#4b5563"/>,
+          detalle: mov.referencia || '-'
+      }
   }
 
-  const abrirEditarProducto = (prod) => {
-    setProductoEditar(prod)
-    setModalProductoOpen(true)
+  const abrirNuevoProducto = () => { setProductoEditar(null); setModalProductoOpen(true) }
+  const abrirEditarProducto = (prod) => { setProductoEditar(prod); setModalProductoOpen(true) }
+  
+  // Nuevo movimiento (desde cero)
+  const abrirMovimiento = (tipo, prod) => { 
+      setMovimientoConfig({ tipo, producto: prod })
+      setMovimientoAEditar(null) 
+      setModalMovimientoOpen(true) 
   }
 
-  const abrirMovimiento = (tipo, prod) => {
-    setMovimientoConfig({ tipo, producto: prod })
-    setModalMovimientoOpen(true)
+  const archivarProducto = async (id) => {
+      if(confirm("¿Archivar producto? Desaparecerá de la lista pero se mantendrá el historial.")) {
+          await supabase.from('bodega_insumos').update({ activo: false }).eq('id', id)
+          cargarDatos()
+      }
+  }
+
+  // --- CORRECCIÓN CLAVE: PERMITIR EDICIÓN ---
+  const handleEditarMovimiento = (mov) => {
+      const info = parseOrigen(mov)
+      if (info.esSistema) {
+          setLaborEditarId(info.origenId)
+          setModalLaborOpen(true)
+      } else {
+          // AHORA SÍ PERMITIMOS EDITAR
+          // Preparamos la configuración como si fuera uno nuevo, pero pasamos el objeto a editar
+          setMovimientoConfig({ 
+              tipo: mov.tipo_movimiento, 
+              producto: mov.bodega_insumos // Pasamos el producto relacionado
+          })
+          setMovimientoAEditar(mov) // Guardamos el registro completo para llenar el form
+          setModalMovimientoOpen(true)
+      }
+  }
+
+  const handleEliminarMovimiento = async (mov) => {
+      const info = parseOrigen(mov)
+      if (info.esSistema) return alert("⛔ Movimiento protegido por Labor.")
+      
+      if(confirm("¿Eliminar este movimiento? Se revertirá el stock.")) {
+          const { error } = await supabase.from('bodega_movimientos').delete().eq('id', mov.id)
+          if (error) alert("Error: " + error.message)
+          else cargarDatos()
+      }
   }
 
   const productosFiltrados = productos.filter(p => 
-    p.nombre.toLowerCase().includes(filtro.toLowerCase()) || 
-    p.categoria?.toLowerCase().includes(filtro.toLowerCase())
+    p.nombre.toLowerCase().includes(filtroGlobal.toLowerCase()) || 
+    p.categoria?.toLowerCase().includes(filtroGlobal.toLowerCase())
   )
 
+  const movimientosFiltrados = movimientos.filter(m => {
+      if (filtrosHistorial.tipo !== 'Todos' && m.tipo_movimiento !== filtrosHistorial.tipo) return false
+      const nombreInsumo = m.bodega_insumos?.nombre || ''
+      if (filtroGlobal && !nombreInsumo.toLowerCase().includes(filtroGlobal.toLowerCase())) return false
+      return true
+  })
+
+  const fmtMoney = (n) => '$ ' + Math.round(n || 0).toLocaleString('es-CL')
+
   const styles = {
-    container: { padding: '20px', width: '90%' },
+    container: { padding: '20px', maxWidth: '1400px', margin: '0 auto', width: '90%' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap:'wrap', gap:'15px' },
     title: { fontSize: '1.8rem', fontWeight: 'bold', color: '#1f2937', display:'flex', alignItems:'center', gap:'10px' },
-    
+    tabs: { display: 'flex', gap: 5, backgroundColor: '#e5e7eb', padding: 4, borderRadius: 8, width: 'fit-content' },
+    tab: (active) => ({
+        padding: '8px 20px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
+        backgroundColor: active ? 'white' : 'transparent', color: active ? '#111827' : '#6b7280',
+        boxShadow: active ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', display:'flex', alignItems:'center', gap:6
+    }),
     searchBar: { display:'flex', alignItems:'center', backgroundColor:'white', padding:'8px 15px', borderRadius:'8px', border:'1px solid #d1d5db', width:'300px' },
     searchInput: { border:'none', outline:'none', marginLeft:'10px', width:'100%', fontSize:'0.95rem' },
-
     btnNew: { backgroundColor: '#1f2937', color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold', display:'flex', alignItems:'center', gap:'8px' },
-
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' },
-    
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', marginTop: 20 },
     card: { backgroundColor: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display:'flex', flexDirection:'column', justifyContent:'space-between' },
     cardHeader: { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'10px' },
     prodName: { fontSize: '1.1rem', fontWeight: 'bold', color: '#1f2937' },
-    prodCat: { fontSize: '0.8rem', color: '#6b7280', backgroundColor:'#f3f4f6', padding:'2px 8px', borderRadius:'4px', marginTop:'4px', display:'inline-block' },
-    
-    stockBig: { fontSize: '2rem', fontWeight: 'bold', color: '#2563eb', margin: '10px 0' },
+    prodCat: { fontSize: '0.75rem', color: '#6b7280', backgroundColor:'#f3f4f6', padding:'2px 8px', borderRadius:'12px', marginTop:'4px', display:'inline-block', fontWeight:'600' },
+    stockBlock: { margin: '15px 0' },
+    stockBig: { fontSize: '2rem', fontWeight: '800', color: '#1f2937' },
     stockUnit: { fontSize: '1rem', color: '#6b7280', fontWeight:'normal', marginLeft:'5px' },
-
+    pmpLabel: { fontSize: '0.8rem', color: '#6b7280', marginTop: 2 },
     actionsRow: { display:'flex', gap:'10px', marginTop:'15px', borderTop:'1px solid #f3f4f6', paddingTop:'15px' },
-    btnAction: (color, bg) => ({ flex:1, padding:'8px', borderRadius:'6px', border:'none', cursor:'pointer', fontWeight:'bold', fontSize:'0.85rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', backgroundColor: bg, color: color }),
+    btnAction: (color, bg) => ({ flex:1, padding:'10px', borderRadius:'8px', border:'none', cursor:'pointer', fontWeight:'bold', fontSize:'0.85rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', backgroundColor: bg, color: color }),
+    tableContainer: { backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb', marginTop: 20 },
+    table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' },
+    th: { backgroundColor: '#f9fafb', padding: '12px 15px', textAlign: 'left', fontSize: '0.75rem', color: '#6b7280', fontWeight: '700', textTransform: 'uppercase', borderBottom:'1px solid #e5e7eb' },
+    td: { padding: '12px 15px', borderBottom: '1px solid #f3f4f6', color: '#374151' },
+    badge: (tipo) => ({
+        padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', display:'inline-flex', alignItems:'center', gap:4,
+        backgroundColor: tipo === 'Entrada' ? '#dcfce7' : '#fee2e2', color: tipo === 'Entrada' ? '#166534' : '#991b1b'
+    }),
+    origenBadge: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', backgroundColor: '#f3f4f6', borderRadius: '6px', fontSize: '0.75rem', color: '#4b5563', border: '1px solid #e5e7eb' },
+    btnIcon: { border: 'none', background: 'none', cursor: 'pointer', padding: 4 }
   }
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}><Package color="#2563eb"/> Bodega</h1>
-        
-        <div style={styles.searchBar}>
-            <Search size={18} color="#9ca3af"/>
-            <input 
-                type="text" 
-                placeholder="Buscar insumo..." 
-                style={styles.searchInput}
-                value={filtro}
-                onChange={e => setFiltro(e.target.value)}
-            />
+        <div style={{display:'flex', flexDirection:'column', gap:10}}>
+            <h1 style={styles.title}><Package color="#2563eb"/> Bodega</h1>
+            <div style={styles.tabs}>
+                <button onClick={() => setActiveTab('inventario')} style={styles.tab(activeTab === 'inventario')}>
+                    <Package size={16}/> Inventario
+                </button>
+                <button onClick={() => setActiveTab('historial')} style={styles.tab(activeTab === 'historial')}>
+                    <History size={16}/> Historial
+                </button>
+            </div>
         </div>
-
-        <button onClick={abrirNuevoProducto} style={styles.btnNew}><Plus size={18}/> Nuevo Producto</button>
+        
+        <div style={{display:'flex', gap:10, alignItems:'center'}}>
+            <div style={styles.searchBar}>
+                <Search size={18} color="#9ca3af"/>
+                <input 
+                    type="text" 
+                    placeholder={activeTab === 'inventario' ? "Buscar insumo..." : "Buscar movimiento..."}
+                    style={styles.searchInput}
+                    value={filtroGlobal}
+                    onChange={e => setFiltroGlobal(e.target.value)}
+                />
+            </div>
+            {activeTab === 'inventario' && (
+                <button onClick={abrirNuevoProducto} style={styles.btnNew}><Plus size={18}/> Nuevo</button>
+            )}
+        </div>
       </div>
 
-      <div style={styles.grid}>
-        {productosFiltrados.map(p => (
-            <div key={p.id} style={styles.card}>
-                <div>
-                    <div style={styles.cardHeader}>
-                        <div>
-                            <div style={styles.prodName}>{p.nombre}</div>
-                            <span style={styles.prodCat}>{p.categoria}</span>
+      {loading && <div style={{padding:20, color:'#6b7280'}}>Cargando datos...</div>}
+
+      {!loading && activeTab === 'inventario' && (
+          <div style={styles.grid}>
+            {productosFiltrados.map(p => (
+                <div key={p.id} style={styles.card}>
+                    <div>
+                        <div style={styles.cardHeader}>
+                            <div>
+                                <div style={styles.prodName}>{p.nombre}</div>
+                                <span style={styles.prodCat}>{p.categoria}</span>
+                            </div>
+                            <div style={{display:'flex', gap:5}}>
+                                <button onClick={() => abrirEditarProducto(p)} style={styles.btnIcon} title="Editar"><Pencil size={16} color="#9ca3af"/></button>
+                                <button onClick={() => archivarProducto(p.id)} style={styles.btnIcon} title="Archivar"><Trash2 size={16} color="#ef4444"/></button>
+                            </div>
                         </div>
-                        <button onClick={() => abrirEditarProducto(p)} style={{border:'none', background:'none', color:'#9ca3af', cursor:'pointer'}} title="Editar Ficha">
-                            <History size={18}/>
+                        <div style={styles.stockBlock}>
+                            <div style={styles.stockBig}>
+                                {parseFloat(p.stock_actual).toLocaleString('es-CL')} 
+                                <span style={styles.stockUnit}>{p.unidad_medida}</span>
+                            </div>
+                            <div style={styles.pmpLabel}>
+                                PMP: <strong>{fmtMoney(p.costo_promedio)}</strong> / {p.unidad_medida}
+                            </div>
+                            {p.stock_actual <= p.stock_minimo && (
+                                <div style={{display:'flex', alignItems:'center', gap:5, color:'#ef4444', fontSize:'0.8rem', fontWeight:'bold', marginTop:8, backgroundColor:'#fef2f2', padding:6, borderRadius:6}}>
+                                    <AlertTriangle size={14}/> Stock Crítico (Min: {p.stock_minimo})
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div style={styles.actionsRow}>
+                        <button onClick={() => abrirMovimiento('Entrada', p)} style={styles.btnAction('#166534', '#dcfce7')}>
+                            <ArrowUpCircle size={18}/> Entrada
+                        </button>
+                        <button onClick={() => abrirMovimiento('Salida', p)} style={styles.btnAction('#991b1b', '#fee2e2')}>
+                            <ArrowDownCircle size={18}/> Salida
                         </button>
                     </div>
-
-                    <div style={styles.stockBig}>
-                        {parseFloat(p.stock_actual).toLocaleString('es-CL')} 
-                        <span style={styles.stockUnit}>{p.unidad_medida}</span>
-                    </div>
-
-                    {p.stock_actual <= p.stock_minimo && (
-                        <div style={{display:'flex', alignItems:'center', gap:'5px', color:'#ef4444', fontSize:'0.85rem', fontWeight:'bold'}}>
-                            <AlertTriangle size={14}/> Stock Bajo (Min: {p.stock_minimo})
-                        </div>
-                    )}
                 </div>
+            ))}
+          </div>
+      )}
 
-                <div style={styles.actionsRow}>
-                    <button 
-                        onClick={() => abrirMovimiento('Entrada', p)} 
-                        style={styles.btnAction('#166534', '#dcfce7')}
-                    >
-                        <ArrowUpCircle size={16}/> Entrada
-                    </button>
-                    <button 
-                        onClick={() => abrirMovimiento('Salida', p)} 
-                        style={styles.btnAction('#991b1b', '#fee2e2')}
-                    >
-                        <ArrowDownCircle size={16}/> Salida
-                    </button>
-                </div>
-            </div>
-        ))}
-      </div>
+      {!loading && activeTab === 'historial' && (
+          <div style={styles.tableContainer}>
+              <table style={styles.table}>
+                  <thead>
+                      <tr>
+                          <th style={styles.th}>Fecha</th>
+                          <th style={styles.th}>Insumo</th>
+                          <th style={styles.th}>Tipo</th>
+                          <th style={styles.th}>Origen / Ref</th>
+                          <th style={styles.th}>Detalle</th>
+                          <th style={{...styles.th, textAlign:'right'}}>Cantidad</th>
+                          <th style={{...styles.th, width:80}}>Acciones</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {movimientosFiltrados.map(mov => {
+                          const info = parseOrigen(mov)
+                          const colorCantidad = mov.tipo_movimiento === 'Entrada' ? '#166534' : '#991b1b'
+                          return (
+                              <tr key={mov.id}>
+                                  <td style={styles.td}>{mov.fecha ? mov.fecha.split('-').reverse().join('/') : '-'}</td>
+                                  <td style={{...styles.td, fontWeight:'bold'}}>{mov.bodega_insumos?.nombre || 'Desconocido'}</td>
+                                  <td style={styles.td}>
+                                      <span style={styles.badge(mov.tipo_movimiento)}>
+                                          {mov.tipo_movimiento === 'Entrada' ? <ArrowUpCircle size={12}/> : <ArrowDownCircle size={12}/>}
+                                          {mov.tipo_movimiento}
+                                      </span>
+                                  </td>
+                                  <td style={styles.td}>
+                                      <div style={styles.origenBadge}>{info.icono} {info.label}</div>
+                                  </td>
+                                  <td style={{...styles.td, fontSize:'0.8rem', color:'#6b7280'}}>{info.detalle}</td>
+                                  <td style={{...styles.td, textAlign:'right', fontFamily:'monospace', fontWeight:'bold', color: colorCantidad}}>
+                                      {mov.tipo_movimiento === 'Entrada' ? '+' : '-'}{parseFloat(mov.cantidad).toLocaleString('es-CL')} {mov.bodega_insumos?.unidad_medida}
+                                  </td>
+                                  <td style={styles.td}>
+                                      <div style={{display:'flex', justifyContent:'flex-end', gap:5}}>
+                                          <button 
+                                              onClick={() => handleEditarMovimiento(mov)}
+                                              title="Editar Movimiento"
+                                              style={{...styles.btnIcon, color: info.esSistema ? '#2563eb' : '#4b5563', backgroundColor: info.esSistema ? '#eff6ff' : 'transparent', borderRadius:4}}
+                                          >
+                                              {info.esSistema ? <FileText size={16}/> : <Pencil size={16}/>}
+                                          </button>
+                                          <button 
+                                              onClick={() => handleEliminarMovimiento(mov)}
+                                              style={{...styles.btnIcon, color: info.esSistema ? '#d1d5db' : '#ef4444', cursor: info.esSistema ? 'not-allowed' : 'pointer'}}
+                                          >
+                                              <Trash2 size={16}/>
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+                          )
+                      })}
+                  </tbody>
+              </table>
+          </div>
+      )}
       
-      {/* MODALES */}
-      <Modal isOpen={modalProductoOpen} onClose={() => setModalProductoOpen(false)} title={productoEditar ? "Editar Producto" : "Nuevo Producto"}>
-          {modalProductoOpen && (
-            <NuevoProducto 
-                producto={productoEditar} 
-                cerrar={() => setModalProductoOpen(false)} 
-                alGuardar={() => { setModalProductoOpen(false); cargarBodega() }}
-            />
-          )}
-      </Modal>
-
-      <Modal isOpen={modalMovimientoOpen} onClose={() => setModalMovimientoOpen(false)} title={`Registrar ${movimientoConfig?.tipo || 'Movimiento'}`}>
+      {/* MODAL REGISTRO / EDICIÓN MOVIMIENTO */}
+      <Modal isOpen={modalMovimientoOpen} onClose={() => setModalMovimientoOpen(false)} title={`${movimientoAEditar ? 'Editar' : 'Registrar'} ${movimientoConfig?.tipo || 'Movimiento'}`}>
           {modalMovimientoOpen && (
             <NuevoMovimientoBodega 
                 config={movimientoConfig}
+                movimientoEditar={movimientoAEditar} // PASAMOS EL OBJETO DE EDICION
                 cerrar={() => setModalMovimientoOpen(false)}
-                alGuardar={() => { setModalMovimientoOpen(false); cargarBodega() }}
+                alGuardar={() => { setModalMovimientoOpen(false); cargarDatos() }}
             />
           )}
       </Modal>
 
+      <Modal isOpen={modalLaborOpen} onClose={() => setModalLaborOpen(false)} title="Editar Labor (Origen)">
+          {modalLaborOpen && <NuevaLabor idLabor={laborEditarId} cerrarModal={() => setModalLaborOpen(false)} alGuardar={() => { setModalLaborOpen(false); cargarDatos() }} />}
+      </Modal>
+      <Modal isOpen={modalProductoOpen} onClose={() => setModalProductoOpen(false)} title={productoEditar ? "Editar Producto" : "Nuevo Producto"}>
+          {modalProductoOpen && <NuevoProducto producto={productoEditar} cerrar={() => setModalProductoOpen(false)} alGuardar={() => { setModalProductoOpen(false); cargarDatos() }} />}
+      </Modal>
     </div>
   )
 }
 
 export default Bodega
-
 
 ================================================================================
 ARCHIVO: src/pages/OfertasComerciales.jsx
@@ -1179,8 +1586,15 @@ function OfertasComerciales() {
       .order('activa', { ascending: false }) // Activas primero
       .order('created_at', { ascending: false })
     
-    if (error) console.error(error)
-    else setOfertas(data || [])
+    if (error) {
+        console.error(error)
+    } else {
+        setOfertas(data || [])
+        
+        // --- CAMBIO: Expandir todos por defecto ---
+        const allIds = new Set((data || []).map(offer => offer.id))
+        setExpandedIds(allIds)
+    }
     setLoading(false)
   }
 
@@ -1349,277 +1763,414 @@ ARCHIVO: src/pages/Gastos.jsx
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { useLocation } from 'react-router-dom' // <--- Importante para recibir navegación
-import { Wallet, Plus, Trash2, Pencil, Clock, CheckCircle, AlertCircle, ArrowUpDown, Filter } from 'lucide-react'
+import { 
+  DollarSign, Plus, Calendar, Filter, Search, 
+  Tag, User, FileText, Trash2, TrendingUp, TrendingDown,
+  LayoutGrid, List, MapPin, Globe, CreditCard, ArrowUpDown
+} from 'lucide-react'
 import Modal from '../components/Modal'
 import NuevoGasto from './NuevoGasto'
 
+const formatMoney = (amount) => '$ ' + Math.round(amount || 0).toLocaleString('es-CL')
+const formatDate = (dateStr) => {
+    if(!dateStr) return '-'
+    const [y, m, d] = dateStr.split('-')
+    return `${d}/${m}/${y}`
+}
+
 function Gastos() {
-  const location = useLocation()
+  const [gastos, setGastos] = useState([])
+  const [loading, setLoading] = useState(true)
   
-  const [gastos, setGastos] = useState([]) 
-  const [cuotasPendientes, setCuotasPendientes] = useState([]) 
-  const [cuotasPagadas, setCuotasPagadas] = useState([]) 
+  // Maestros para filtros
+  const [categorias, setCategorias] = useState([])
+  const [proveedores, setProveedores] = useState([])
   
-  const [filtro, setFiltro] = useState('Todos') 
-  const [sortConfig, setSortConfig] = useState({ key: 'fecha', direction: 'desc' })
+  // Vista Activa
+  const [activeTab, setActiveTab] = useState('resumen') // 'resumen' (Tarjetas) | 'historial' (Tabla)
+
+  // Filtros
+  const [filtroMes, setFiltroMes] = useState('')
+  const [filtroAnio, setFiltroAnio] = useState(new Date().getFullYear().toString())
+  const [filtroCategoria, setFiltroCategoria] = useState('')
+  const [filtroProveedor, setFiltroProveedor] = useState('')
+  const [busqueda, setBusqueda] = useState('')
+  
+  // Ordenamiento (NUEVO)
+  const [orden, setOrden] = useState('fecha_desc') // fecha_desc | fecha_asc | monto_desc | monto_asc
 
   const [modalOpen, setModalOpen] = useState(false)
-  const [gastoEditarId, setGastoEditarId] = useState(null)
+  const [editarId, setEditarId] = useState(null)
 
-  const formatearDinero = (monto) => '$ ' + Math.round(monto).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-  const formatearFecha = (f) => f ? f.split('-').reverse().join('/') : '-'
+  useEffect(() => { cargarMaestros() }, [])
+  useEffect(() => { cargarGastos() }, [filtroMes, filtroAnio])
 
-  useEffect(() => { leerGastos() }, [])
-
-  // --- LÓGICA AUTO-APERTURA ---
-  useEffect(() => {
-      if (location.state && location.state.abrirGastoId) {
-          const idParaAbrir = location.state.abrirGastoId
-          setGastoEditarId(idParaAbrir)
-          setModalOpen(true)
-          // Limpiar el estado para evitar re-apertura al refrescar
-          window.history.replaceState({}, document.title)
-      }
-  }, [location])
-
-  async function leerGastos() {
-    const { data: dataDocs, error } = await supabase
-      .from('gastos')
-      .select(`*, proveedores ( nombre ), categorias_gastos ( nombre ), subcategorias_gastos ( nombre ), parcelas ( nombre ), pagos_gastos ( * ), socios ( nombre )`) 
-      
-    if (!error && dataDocs) {
-      setGastos(dataDocs)
-      procesarCuotas(dataDocs)
-    }
+  async function cargarMaestros() {
+    const [cat, prov] = await Promise.all([
+        supabase.from('categorias_gastos').select('id, nombre').order('nombre'),
+        supabase.from('proveedores').select('id, nombre').order('nombre')
+    ])
+    setCategorias(cat.data || [])
+    setProveedores(prov.data || [])
   }
 
-  const procesarCuotas = (dataDocs) => {
-      let pendientes = [], pagadas = []
+  async function cargarGastos() {
+    setLoading(true)
+    let query = supabase
+      .from('gastos')
+      .select(`
+        *,
+        categorias_gastos!gastos_categoria_id_fkey ( nombre ),
+        proveedores ( nombre ),
+        socios:pagado_por_socio_id ( nombre )
+      `)
+      .order('fecha', { ascending: false })
 
-      dataDocs.forEach(doc => {
-         const pagadorDoc = doc.pagado_por_socio_id ? doc.socios?.nombre : 'Empresa'
-         const montoTotal = parseFloat(doc.monto) || 0
-         const totalPagado = doc.pagos_gastos?.filter(p => p.estado === 'Pagado').reduce((acc, p) => acc + (parseFloat(p.monto)||0), 0) || 0
-         const saldoPendiente = montoTotal - totalPagado
-         doc.saldoPendiente = saldoPendiente
+    if (filtroAnio && filtroAnio !== 'Todos') {
+        const anio = parseInt(filtroAnio)
+        if (filtroMes && filtroMes !== 'Todos') {
+            const mes = parseInt(filtroMes)
+            const fechaInicio = new Date(anio, mes - 1, 1).toISOString().split('T')[0]
+            const fechaFin = new Date(anio, mes, 0).toISOString().split('T')[0]
+            query = query.gte('fecha', fechaInicio).lte('fecha', fechaFin)
+        } else {
+            const fechaInicio = `${anio}-01-01`
+            const fechaFin = `${anio}-12-31`
+            query = query.gte('fecha', fechaInicio).lte('fecha', fechaFin)
+        }
+    }
 
-         const base = {
-             proveedor: doc.proveedores?.nombre,
-             parcela: doc.parcelas?.nombre || 'Gral',
-             categoria: doc.categorias_gastos?.nombre,
-             subcat: doc.subcategorias_gastos?.nombre,
-             docInfo: `${doc.tipo_documento} ${doc.nro_documento || ''}`
-         }
-
-         if (doc.pagos_gastos && doc.pagos_gastos.length > 0) {
-            // Cuotas Pendientes
-            doc.pagos_gastos.filter(p => p.estado === 'Pendiente').forEach(hijo => {
-               pendientes.push({
-                  ...base, tipo: 'cuota', id: hijo.id, padreId: doc.id,
-                  fecha: hijo.fecha_vencimiento,
-                  detalle: `Cuota (${doc.descripcion})`,
-                  monto: hijo.monto,
-                  saldoPendiente: hijo.monto,
-                  forma_pago: '-', pagado_por: '-'
-               })
-            })
-            // Cuotas Pagadas
-            doc.pagos_gastos.filter(p => p.estado === 'Pagado').forEach(hijo => {
-               pagadas.push({
-                  ...base, tipo: 'cuota', id: hijo.id, padreId: doc.id,
-                  fecha: hijo.fecha_vencimiento,
-                  detalle: `Cuota Pagada (${doc.descripcion})`,
-                  monto: hijo.monto,
-                  saldoPendiente: 0,
-                  forma_pago: hijo.forma_pago, pagado_por: hijo.pagado_por_socio_id ? 'Socio' : pagadorDoc
-               })
-            })
-         } else {
-            // Gasto Simple
-            const item = {
-               ...base, tipo: 'doc', id: doc.id, padreId: doc.id,
-               fecha: doc.fecha_vencimiento || doc.fecha,
-               detalle: doc.descripcion,
-               monto: doc.monto,
-               saldoPendiente: doc.estado_pago === 'Pagado' ? 0 : doc.monto,
-               forma_pago: doc.forma_pago, pagado_por: pagadorDoc
-            }
-            if (doc.estado_pago === 'Pendiente') pendientes.push(item)
-            else if (doc.estado_pago === 'Pagado') pagadas.push(item)
-         }
-      })
-      setCuotasPendientes(pendientes)
-      setCuotasPagadas(pagadas)
+    const { data, error } = await query
+    if (error) console.error("Error cargando gastos:", error)
+    else setGastos(data || [])
+    
+    setLoading(false)
   }
 
   const eliminarGasto = async (id) => {
-    if (confirm("¿Eliminar documento y sus pagos?")) {
-      await supabase.from('gastos').delete().eq('id', id)
-      leerGastos() 
+    if (confirm("¿Eliminar este registro de gasto?")) {
+      const { error } = await supabase.from('gastos').delete().eq('id', id)
+      if (!error) cargarGastos()
     }
   }
 
-  const handleSort = (key) => {
-    setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }))
-  }
+  // 1. Filtrado
+  const gastosFiltrados = gastos.filter(g => {
+    if (filtroCategoria && filtroCategoria !== 'Todos' && g.categoria_id?.toString() !== filtroCategoria) return false
+    if (filtroProveedor && filtroProveedor !== 'Todos' && g.proveedor_id?.toString() !== filtroProveedor) return false
+    
+    const texto = busqueda.toLowerCase()
+    return !busqueda || 
+           g.descripcion?.toLowerCase().includes(texto) || 
+           g.proveedores?.nombre?.toLowerCase().includes(texto) ||
+           g.nro_documento?.toLowerCase().includes(texto) ||
+           g.monto?.toString().includes(texto)
+  })
 
-  const ordenarDatos = (datos) => {
-    return [...datos].sort((a, b) => {
-      let valA = a[sortConfig.key] || '', valB = b[sortConfig.key] || ''
-      if (['monto', 'saldoPendiente'].includes(sortConfig.key)) {
-          valA = parseFloat(valA); valB = parseFloat(valB)
-      }
-      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1
-      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1
+  // 2. Ordenamiento (NUEVO)
+  const gastosOrdenados = [...gastosFiltrados].sort((a, b) => {
+      if (orden === 'fecha_desc') return new Date(b.fecha) - new Date(a.fecha)
+      if (orden === 'fecha_asc') return new Date(a.fecha) - new Date(b.fecha)
+      if (orden === 'monto_desc') return (b.monto || 0) - (a.monto || 0)
+      if (orden === 'monto_asc') return (a.monto || 0) - (b.monto || 0)
       return 0
-    })
+  })
+
+  // Cálculos KPIs
+  const totalPeriodo = gastosFiltrados.reduce((acc, g) => acc + (g.monto || 0), 0)
+  const totalPagado = gastosFiltrados.filter(g => g.estado_pago === 'Pagado').reduce((acc, g) => acc + (g.monto || 0), 0)
+  const totalPendiente = totalPeriodo - totalPagado
+
+  const StatusBadge = ({ status }) => {
+      const isPaid = status === 'Pagado'
+      return (
+          <span style={{
+              padding:'4px 10px', borderRadius:12, fontSize:'0.75rem', fontWeight:'bold',
+              backgroundColor: isPaid ? '#dcfce7' : '#fee2e2', color: isPaid ? '#166534' : '#991b1b',
+              border: isPaid ? '1px solid #86efac' : '1px solid #fca5a5', display:'inline-block'
+          }}>
+              {status?.toUpperCase()}
+          </span>
+      )
   }
-
-  const totalDeudaReal = cuotasPendientes.reduce((acc, item) => acc + Number(item.monto), 0)
-
-  // RENDERIZADO
-  const getData = () => {
-    if (filtro === 'Pendiente') return cuotasPendientes
-    if (filtro === 'Pagado') return cuotasPagadas
-    return gastos.map(g => ({
-        ...g,
-        proveedor: g.proveedores?.nombre,
-        parcela: g.parcelas?.nombre || 'Gral',
-        categoria: g.categorias_gastos?.nombre,
-        subcat: g.subcategorias_gastos?.nombre,
-        detalle: g.descripcion,
-        docInfo: `${g.tipo_documento} ${g.nro_documento || ''}`,
-        pagado_por: g.pagado_por_socio_id ? g.socios?.nombre : (g.estado_pago === 'Pagado' ? 'Empresa' : '-')
-    }))
-  }
-
-  const datos = ordenarDatos(getData())
 
   const styles = {
-    container: { width: '90%', maxWidth: '1400px', margin: '0 auto', padding: '20px 0' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #e5e7eb' },
-    title: { margin: 0, fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', display: 'flex', alignItems: 'center', gap: 10 },
-    controls: { display: 'flex', gap: 15, alignItems: 'center' },
-    tabs: { display: 'flex', backgroundColor: '#f3f4f6', padding: 4, borderRadius: 8 },
-    tab: (active) => ({
-        padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',
-        backgroundColor: active ? 'white' : 'transparent', color: active ? '#111827' : '#6b7280', boxShadow: active ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.2s'
+    container: { width: '95%', maxWidth: '1400px', margin: '0 auto', padding: '20px 0' },
+    header: { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 20 },
+    title: { fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', display: 'flex', alignItems: 'center', gap: 10 },
+    
+    tabsContainer: { display:'flex', gap:5, backgroundColor:'#e5e7eb', padding:4, borderRadius:8 },
+    tabBtn: (active) => ({
+        padding:'8px 16px', borderRadius:6, border:'none', cursor:'pointer', fontWeight:'bold', fontSize:'0.9rem',
+        backgroundColor: active ? 'white' : 'transparent', color: active ? '#111827' : '#6b7280', display:'flex', gap:8, alignItems:'center',
+        boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
     }),
-    btnNew: { padding: '8px 16px', backgroundColor: '#111827', color: 'white', borderRadius: 6, border: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.9rem' },
-    debtAlert: { display:'flex', alignItems:'center', gap:10, backgroundColor:'#fef2f2', color:'#991b1b', padding:'6px 15px', borderRadius:20, fontSize:'0.9rem', fontWeight:'bold', border:'1px solid #fecaca' },
-    tableContainer: { backgroundColor: 'white', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden' },
-    table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' },
-    th: { textAlign: 'left', padding: '12px 15px', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600, cursor:'pointer' },
-    td: { padding: '10px 15px', borderBottom: '1px solid #f3f4f6', color: '#374151', verticalAlign:'middle' },
-    badge: (tipo) => ({
-        padding:'2px 8px', borderRadius:12, fontSize:'0.7rem', fontWeight:'bold', textTransform:'uppercase',
-        backgroundColor: tipo === 'Pagado' ? '#dcfce7' : (tipo === 'Pendiente' ? '#fee2e2' : '#fef9c3'),
-        color: tipo === 'Pagado' ? '#166534' : (tipo === 'Pendiente' ? '#991b1b' : '#854d0e')
-    })
-  }
 
-  const Th = ({ label, k }) => (
-      <th style={styles.th} onClick={() => handleSort(k)}>
-          <div style={{display:'flex', alignItems:'center', gap:4}}>
-              {label} {sortConfig.key === k && <ArrowUpDown size={12}/>}
-          </div>
-      </th>
-  )
+    // KPIs
+    kpiBar: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20, marginBottom: 20 },
+    kpiCard: (bg, border) => ({ backgroundColor: bg, padding: 20, borderRadius: 16, border: `1px solid ${border}`, display: 'flex', flexDirection: 'column', gap: 5 }),
+    kpiLabel: { fontSize: '0.8rem', fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase' },
+    kpiValue: { fontSize: '2rem', fontWeight: '800', color: '#111827' },
+
+    // Filtros
+    controls: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#fff', padding: 15, borderRadius: 12, border: '1px solid #e5e7eb', marginBottom: 20 },
+    filterGroup: { display:'flex', alignItems:'center', gap:5 },
+    labelFilter: { fontSize:'0.85rem', fontWeight:'bold', color:'#6b7280' },
+    select: { padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: '0.9rem', minWidth: 140, cursor:'pointer' },
+    inputSearch: { padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: '0.9rem', width: 200, paddingLeft:32 },
+    btnNew: { backgroundColor: '#1f2937', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 },
+
+    // VISTA TARJETAS
+    gridCards: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 20 },
+    card: { backgroundColor: 'white', borderRadius: 12, padding: 0, border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', overflow:'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
+    cardHeader: { padding:15, display:'flex', gap:15, alignItems:'center', borderBottom:'1px solid #f3f4f6' },
+    dateBox: { display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 60, paddingRight: 15, borderRight: '1px solid #f3f4f6' },
+    day: { fontSize: '1.5rem', fontWeight: 'bold', color: '#374151', lineHeight: 1 },
+    month: { fontSize: '0.75rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 'bold' },
+    year: { fontSize: '0.7rem', color: '#9ca3af' },
+    cardBody: { padding:15, flex:1 },
+    cardFooter: { padding: '10px 15px', backgroundColor:'#f9fafb', borderTop:'1px solid #f3f4f6', display:'flex', justifyContent:'space-between', alignItems:'center' },
+    
+    // VISTA TABLA
+    tableContainer: { backgroundColor: 'white', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden' },
+    table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' },
+    th: { textAlign: 'left', padding: '12px 15px', backgroundColor: '#f9fafb', color: '#6b7280', fontWeight: 'bold', fontSize: '0.75rem', textTransform: 'uppercase', borderBottom: '1px solid #e5e7eb' },
+    td: { padding: '12px 15px', borderBottom: '1px solid #f3f4f6', color: '#374151', verticalAlign:'middle' },
+    badge: { display:'inline-flex', alignItems:'center', gap:4, backgroundColor:'#f3f4f6', padding:'2px 8px', borderRadius:6, border:'1px solid #e5e7eb', fontSize:'0.75rem', color:'#4b5563' },
+    
+    btnIcon: { border:'none', background:'transparent', cursor:'pointer', padding:5, borderRadius:4, color:'#6b7280' }
+  }
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-         <div style={{display:'flex', alignItems:'center', gap:20}}>
-            <h1 style={styles.title}><Wallet size={28}/> Gastos</h1>
-            {totalDeudaReal > 0 && (
-                <div style={styles.debtAlert}>
-                    <AlertCircle size={16}/> Por Pagar: {formatearDinero(totalDeudaReal)}
-                </div>
-            )}
-         </div>
-
-         <div style={styles.controls}>
-             <div style={styles.tabs}>
-                <button onClick={() => setFiltro('Todos')} style={styles.tab(filtro === 'Todos')}>Documentos</button>
-                <button onClick={() => setFiltro('Pendiente')} style={styles.tab(filtro === 'Pendiente')}>Pendientes</button>
-                <button onClick={() => setFiltro('Pagado')} style={styles.tab(filtro === 'Pagado')}>Pagados</button>
-             </div>
-             <button onClick={() => { setGastoEditarId(null); setModalOpen(true) }} style={styles.btnNew}>
-                <Plus size={16} /> Nuevo
-             </button>
-         </div>
+        <h1 style={styles.title}><DollarSign size={28} /> Gestión de Gastos</h1>
+        <div style={styles.tabsContainer}>
+            <button onClick={() => setActiveTab('resumen')} style={styles.tabBtn(activeTab === 'resumen')}>
+                <LayoutGrid size={16}/> Resumen
+            </button>
+            <button onClick={() => setActiveTab('historial')} style={styles.tabBtn(activeTab === 'historial')}>
+                <List size={16}/> Historial
+            </button>
+        </div>
       </div>
 
-      <div style={styles.tableContainer}>
-        <table style={styles.table}>
-          <thead style={{backgroundColor:'#f9fafb'}}>
-            <tr>
-              <Th label="Fecha" k="fecha"/>
-              <Th label="Documento" k="nro_documento"/>
-              <Th label="Proveedor" k="proveedor"/>
-              <Th label="Parcela" k="parcela"/>
-              <Th label="Detalle" k="detalle"/>
-              <Th label="Total" k="monto"/>
-              <Th label="Saldo" k="saldoPendiente"/>
-              <th style={styles.th}>Estado</th>
-              <th style={styles.th}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {datos.length === 0 ? (
-                <tr><td colSpan="9" style={{padding:40, textAlign:'center', color:'#9ca3af'}}>No hay registros para este filtro.</td></tr>
-            ) : datos.map(item => (
-                <tr key={item.tipo === 'cuota' ? `c-${item.id}` : `g-${item.id}`}>
-                   <td style={styles.td}>{formatearFecha(item.fecha)}</td>
-                   <td style={styles.td}>
-                        <div style={{fontWeight:'bold'}}>{item.docInfo}</div>
-                        <div style={{fontSize:'0.75rem', color:'#6b7280'}}>{item.categoria}</div>
-                   </td>
-                   <td style={styles.td}>{item.proveedor}</td>
-                   <td style={styles.td}>
-                        <span style={{padding:'2px 6px', backgroundColor:'#f3f4f6', borderRadius:4, fontSize:'0.75rem'}}>
-                            {item.parcela}
-                        </span>
-                   </td>
-                   <td style={styles.td} title={item.detalle}>
-                       <div style={{maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-                          {item.detalle}
-                       </div>
-                   </td>
-                   <td style={{...styles.td, fontWeight:'bold', fontFamily:'monospace'}}>{formatearDinero(item.monto)}</td>
-                   <td style={{...styles.td, color: item.saldoPendiente > 0 ? '#dc2626' : '#d1d5db', fontWeight:'bold'}}>
-                       {item.saldoPendiente > 0 ? formatearDinero(item.saldoPendiente) : '-'}
-                   </td>
-                   <td style={styles.td}>
-                       {filtro === 'Todos' && (
-                           <span style={styles.badge(item.estado_pago)}>
-                               {item.estado_pago}
-                           </span>
-                       )}
-                   </td>
-                   <td style={styles.td}>
-                       <div style={{display:'flex', justifyContent:'flex-end', gap:5}}>
-                           <button onClick={() => { setGastoEditarId(item.padreId || item.id); setModalOpen(true) }} style={{border:'none', background:'none', color:'#2563eb', cursor:'pointer'}}><Pencil size={16}/></button>
-                           {filtro === 'Todos' && (
-                               <button onClick={() => eliminarGasto(item.id)} style={{border:'none', background:'none', color:'#ef4444', cursor:'pointer'}}><Trash2 size={16}/></button>
-                           )}
-                       </div>
-                   </td>
-                </tr>
-            ))}
-          </tbody>
-        </table>
+      <div style={styles.kpiBar}>
+            <div style={styles.kpiCard('white', '#d1d5db')}>
+                <span style={styles.kpiLabel}>Gasto Total (Periodo)</span>
+                <span style={styles.kpiValue}>{formatMoney(totalPeriodo)}</span>
+            </div>
+            <div style={styles.kpiCard('#f0fdf4', '#bbf7d0')}>
+                <div style={{display:'flex', justifyContent:'space-between'}}><span style={{...styles.kpiLabel, color:'#166534'}}>Pagado</span><TrendingUp size={20} color="#16a34a"/></div>
+                <span style={{...styles.kpiValue, color:'#166534'}}>{formatMoney(totalPagado)}</span>
+            </div>
+            <div style={styles.kpiCard('#fef2f2', '#fecaca')}>
+                <div style={{display:'flex', justifyContent:'space-between'}}><span style={{...styles.kpiLabel, color:'#991b1b'}}>Deuda Pendiente</span><TrendingDown size={20} color="#ef4444"/></div>
+                <span style={{...styles.kpiValue, color:'#991b1b'}}>{formatMoney(totalPendiente)}</span>
+            </div>
       </div>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={gastoEditarId ? "Editar Gasto / Factura" : "Registrar Nuevo Gasto"}>
-        {modalOpen && (
-            <NuevoGasto idGasto={gastoEditarId} cerrarModal={() => setModalOpen(false)} alGuardar={() => { setModalOpen(false); leerGastos() }} />
-        )}
+      <div style={styles.controls}>
+        {/* Filtros Izquierda */}
+        <div style={styles.filterGroup}>
+            <span style={styles.labelFilter}>Año:</span>
+            <select value={filtroAnio} onChange={e => setFiltroAnio(e.target.value)} style={styles.select}>
+                <option value="Todos">Todos</option>
+                {[2024, 2025, 2026, 2027].map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+        </div>
+
+        <div style={styles.filterGroup}>
+            <span style={styles.labelFilter}>Mes:</span>
+            <select value={filtroMes} onChange={e => setFiltroMes(e.target.value)} style={styles.select}>
+                <option value="Todos">Todos</option>
+                {['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].map((m,i) => (
+                    <option key={i} value={i+1}>{m}</option>
+                ))}
+            </select>
+        </div>
+
+        <div style={styles.filterGroup}>
+            <span style={styles.labelFilter}>Categoría:</span>
+            <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={styles.select}>
+                <option value="Todos">Todas</option>
+                {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+            </select>
+        </div>
+
+        <div style={styles.filterGroup}>
+            <span style={styles.labelFilter}>Proveedor:</span>
+            <select value={filtroProveedor} onChange={e => setFiltroProveedor(e.target.value)} style={styles.select}>
+                <option value="Todos">Todos</option>
+                {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            </select>
+        </div>
+
+        {/* Grupo Derecha: Ordenar, Buscar, Nuevo */}
+        <div style={{display:'flex', alignItems:'center', gap:10, marginLeft:'auto'}}>
+            
+            {/* CONTROL ORDENAR */}
+            <div style={styles.filterGroup}>
+                <ArrowUpDown size={16} color="#6b7280"/>
+                <select value={orden} onChange={e => setOrden(e.target.value)} style={styles.select}>
+                    <option value="fecha_desc">Más Recientes</option>
+                    <option value="fecha_asc">Más Antiguos</option>
+                    <option value="monto_desc">Mayor Monto</option>
+                    <option value="monto_asc">Menor Monto</option>
+                </select>
+            </div>
+
+            <div style={{position:'relative'}}>
+                <Search size={16} color="#9ca3af" style={{position:'absolute', left:10, top:10}}/>
+                <input 
+                    type="text" placeholder="Buscar..." value={busqueda} onChange={e => setBusqueda(e.target.value)}
+                    style={styles.inputSearch}
+                />
+            </div>
+
+            <button onClick={() => { setEditarId(null); setModalOpen(true) }} style={styles.btnNew}>
+                <Plus size={18}/> Nuevo
+            </button>
+        </div>
+      </div>
+
+      {loading && <div style={{padding:40, textAlign:'center', color:'#9ca3af'}}>Cargando registros...</div>}
+
+      {/* VISTA 1: RESUMEN (TARJETAS) */}
+      {!loading && activeTab === 'resumen' && (
+          <div style={styles.gridCards}>
+              {gastosOrdenados.map(g => {
+                  const fecha = new Date(g.fecha)
+                  const dia = fecha.getDate()
+                  const mes = fecha.toLocaleString('es-ES', { month: 'short' }).toUpperCase()
+                  const anio = fecha.getFullYear()
+                  const isGlobal = !g.sectores_ids || g.sectores_ids.length === 0
+
+                  return (
+                      <div key={g.id} style={styles.card}>
+                          <div style={styles.cardHeader}>
+                              <div style={styles.dateBox}>
+                                  <span style={styles.day}>{dia}</span>
+                                  <span style={styles.month}>{mes}</span>
+                                  <span style={styles.year}>{anio}</span>
+                              </div>
+                              <div style={{flex:1}}>
+                                  <div style={{fontSize:'1rem', fontWeight:'bold', color:'#1f2937', marginBottom:5}}>{g.descripcion}</div>
+                                  <div style={{display:'flex', gap:5, flexWrap:'wrap'}}>
+                                      <span style={styles.badge}><Tag size={12}/> {g.categorias_gastos?.nombre || 'General'}</span>
+                                      {g.proveedores && <span style={styles.badge}><User size={12}/> {g.proveedores.nombre}</span>}
+                                  </div>
+                              </div>
+                          </div>
+                          
+                          <div style={styles.cardBody}>
+                              <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:10}}>
+                                  <div>
+                                      <div style={{fontSize:'0.75rem', color:'#6b7280', marginBottom:2}}>Monto Total</div>
+                                      <div style={{fontSize:'1.5rem', fontWeight:'800', color:'#111827'}}>{formatMoney(g.monto)}</div>
+                                  </div>
+                                  <StatusBadge status={g.estado_pago} />
+                              </div>
+                              
+                              <div style={{fontSize:'0.8rem', color:'#6b7280', display:'flex', flexDirection:'column', gap:4}}>
+                                  {g.nro_documento && <div style={{display:'flex', gap:6}}><FileText size={14}/> Doc: {g.nro_documento}</div>}
+                                  <div style={{display:'flex', gap:6, alignItems:'center'}}>
+                                      {isGlobal ? <Globe size={14}/> : <MapPin size={14}/>}
+                                      {isGlobal ? 'Gasto Global (Todo el campo)' : `Asignado a ${g.sectores_ids.length} sectores`}
+                                  </div>
+                                  {g.estado_pago === 'Pagado' && g.socios && (
+                                      <div style={{display:'flex', gap:6, color:'#166534'}}>
+                                          <CreditCard size={14}/> Pagado por: {g.socios.nombre}
+                                      </div>
+                                  )}
+                              </div>
+                          </div>
+
+                          <div style={styles.cardFooter}>
+                              <span style={{fontSize:'0.75rem', color:'#9ca3af'}}>ID: {g.id}</span>
+                              <div style={{display:'flex', gap:10}}>
+                                  <button onClick={() => { setEditarId(g.id); setModalOpen(true) }} style={{...styles.btnIcon, color:'#4b5563', fontWeight:'bold'}}>Editar</button>
+                                  <button onClick={() => eliminarGasto(g.id)} style={{...styles.btnIcon, color:'#ef4444'}}>Eliminar</button>
+                              </div>
+                          </div>
+                      </div>
+                  )
+              })}
+          </div>
+      )}
+
+      {/* VISTA 2: HISTORIAL (TABLA) */}
+      {!loading && activeTab === 'historial' && (
+          <div style={styles.tableContainer}>
+              <table style={styles.table}>
+                  <thead>
+                      <tr>
+                          <th style={styles.th}>Fecha</th>
+                          <th style={styles.th}>Categoría</th>
+                          <th style={styles.th}>Proveedor</th>
+                          <th style={styles.th}>Descripción</th>
+                          <th style={styles.th}>Sectores</th>
+                          <th style={styles.th}>Estado</th>
+                          <th style={{...styles.th, textAlign:'right'}}>Monto</th>
+                          <th style={{...styles.th, textAlign:'center'}}>Acciones</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {gastosOrdenados.map(g => {
+                          const isGlobal = !g.sectores_ids || g.sectores_ids.length === 0
+                          return (
+                              <tr key={g.id}>
+                                  <td style={styles.td}>{formatDate(g.fecha)}</td>
+                                  <td style={{...styles.td, fontWeight:'bold'}}>{g.categorias_gastos?.nombre}</td>
+                                  <td style={styles.td}>{g.proveedores?.nombre || '-'}</td>
+                                  <td style={styles.td}>
+                                      <div>{g.descripcion}</div>
+                                      {g.nro_documento && <div style={{fontSize:'0.75rem', color:'#9ca3af'}}>#{g.nro_documento}</div>}
+                                  </td>
+                                  <td style={styles.td}>
+                                       {isGlobal ? (
+                                           <span style={styles.badge}><Globe size={10}/> Global</span>
+                                       ) : (
+                                           <span style={{...styles.badge, backgroundColor:'#eff6ff', color:'#1e40af', border:'1px solid #bfdbfe'}}>
+                                               <MapPin size={10}/> {g.sectores_ids.length}
+                                           </span>
+                                       )}
+                                  </td>
+                                  <td style={styles.td}><StatusBadge status={g.estado_pago}/></td>
+                                  <td style={{...styles.td, textAlign:'right', fontWeight:'bold', fontFamily:'monospace', fontSize:'1rem'}}>
+                                      {formatMoney(g.monto)}
+                                  </td>
+                                  <td style={styles.td}>
+                                      <div style={{display:'flex', justifyContent:'center', gap:5}}>
+                                          <button onClick={() => { setEditarId(g.id); setModalOpen(true) }} style={{...styles.btnIcon, backgroundColor:'#f3f4f6'}}>
+                                              <FileText size={16}/>
+                                          </button>
+                                          <button onClick={() => eliminarGasto(g.id)} style={{...styles.btnIcon, color:'#ef4444', backgroundColor:'#fef2f2'}}>
+                                              <Trash2 size={16}/>
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+                          )
+                      })}
+                  </tbody>
+              </table>
+          </div>
+      )}
+
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editarId ? "Editar Gasto" : "Registrar Nuevo Gasto"}>
+         {modalOpen && (
+            <NuevoGasto 
+                idGasto={editarId}
+                cerrarModal={() => setModalOpen(false)}
+                alGuardar={() => { setModalOpen(false); cargarGastos() }}
+            />
+         )}
       </Modal>
     </div>
   )
 }
+
 export default Gastos
 
 ================================================================================
@@ -1631,7 +2182,7 @@ import { supabase } from '../supabaseClient'
 import { 
     Users, TrendingUp, TrendingDown, Plus, Minus, Wallet, 
     ArrowUpDown, Filter, ShoppingBag, User, 
-    Pencil, Trash2, Lock, FileText, Calendar, Search
+    Pencil, Trash2, Lock, FileText, Calendar, Search, LayoutGrid, List
 } from 'lucide-react'
 import Modal from '../components/Modal'
 import NuevoGasto from './NuevoGasto'
@@ -1672,10 +2223,10 @@ function FormularioMovimiento({ socioId, tipoInicial, initialData, cerrar, alGua
         supabase.from('socios').select('id, nombre').order('nombre').then(({ data }) => setSocios(data || []))
         if (initialData) {
             setFormData({
-                socio_id: initialData.socio_id,
-                tipo: initialData.tipo,
-                monto: initialData.monto,
-                fecha: initialData.fecha,
+                socio_id: initialData.socio_id || '',
+                tipo: initialData.tipo || 'Aporte',
+                monto: initialData.monto || '',
+                fecha: initialData.fecha || '',
                 descripcion: initialData.descripcion || ''
             })
         }
@@ -1762,8 +2313,6 @@ function CuentasSocios() {
   // Modales
   const [modalOpen, setModalOpen] = useState(false)
   const [modalConfig, setModalConfig] = useState({ socioId: null, tipo: 'Aporte', data: null })
-  
-  // Modal Especial para Gastos
   const [modalGastoOpen, setModalGastoOpen] = useState(false)
   const [gastoEditarId, setGastoEditarId] = useState(null)
 
@@ -1772,13 +2321,12 @@ function CuentasSocios() {
   
   // Filtros de Historial
   const [filtros, setFiltros] = useState({
-      tipo: 'Todos',    // Todos, Aporte, Retiro
-      socio: 'Todos',   // ID Socio
-      year: new Date().getFullYear().toString(),
-      month: 'Todos'    // 1-12
+      tipo: 'Todos',    
+      socio: 'Todos',   
+      year: 'Todos',    
+      month: 'Todos'    
   })
   
-  // Ordenamiento de Tabla
   const [sortConfig, setSortConfig] = useState({ key: 'fecha', direction: 'desc' })
 
   const formatMoney = (val) => '$ ' + Math.round(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
@@ -1788,13 +2336,38 @@ function CuentasSocios() {
 
   async function cargarDatos() {
     setLoading(true)
-    const { data: dataSocios } = await supabase.from('vista_saldo_socios').select('*')
-    // Traemos más movimientos ya que ahora tenemos filtros locales
-    const { data: dataMovs } = await supabase.from('movimientos_billetera').select(`*, socios(nombre)`).order('fecha', { ascending: false }).limit(200)
-    
-    setSocios(dataSocios || [])
-    setMovimientos(dataMovs || [])
-    setLoading(false)
+    try {
+        // 1. Cargar Socios (Vista de saldos)
+        const { data: dataSocios, error: errSocios } = await supabase.from('vista_saldo_socios').select('*')
+        if (errSocios) throw errSocios
+
+        // 2. Cargar Movimientos
+        const { data: dataMovs, error: errMovs } = await supabase
+            .from('movimientos_billetera')
+            .select('*')
+            .order('fecha', { ascending: false })
+            .limit(500)
+        
+        if (errMovs) throw errMovs
+
+        // 3. Cruzar datos manualmente
+        const movimientosEnriquecidos = (dataMovs || []).map(m => {
+            const socioInfo = (dataSocios || []).find(s => s.socio_id === m.socio_id)
+            return {
+                ...m,
+                socios: { nombre: socioInfo ? socioInfo.socio_nombre : 'Socio Desconocido' }
+            }
+        })
+
+        setSocios(dataSocios || [])
+        setMovimientos(movimientosEnriquecidos)
+
+    } catch (error) {
+        console.error("Error al cargar datos:", error)
+        alert("Error cargando datos: " + error.message)
+    } finally {
+        setLoading(false)
+    }
   }
 
   // Detectar Origen
@@ -1823,10 +2396,8 @@ function CuentasSocios() {
       }
   }
 
-  // --- ACCIONES ---
   const handleEditar = (mov) => {
       const info = parseOrigen(mov.descripcion)
-      
       if (info.esSistema && info.gastoId) {
           setGastoEditarId(info.gastoId)
           setModalGastoOpen(true)
@@ -1840,14 +2411,20 @@ function CuentasSocios() {
 
   const handleEliminar = async (mov) => {
       const info = parseOrigen(mov.descripcion)
+      
+      // LOGICA DE BORRADO SEGURA PERO PERMISIVA
       if (info.esSistema) {
-           alert("⛔ Para eliminar un pago de Gasto, por seguridad, debes editar el Gasto y borrar la cuota desde el formulario.")
-           return
+           // Permitimos borrar pero con advertencia fuerte para limpiar registros huérfanos
+           if(!confirm("⚠️ ADVERTENCIA: Este registro está vinculado a un Gasto.\n\nSi el gasto original ya no existe, este registro es un residuo y puedes borrarlo.\n\n¿Estás seguro de que deseas FORZAR el borrado?")) {
+               return;
+           }
+      } else {
+           if (!confirm("¿Eliminar movimiento permanentemente?")) return;
       }
-      if (confirm("¿Eliminar movimiento permanentemente?")) {
-          const { error } = await supabase.from('movimientos_billetera').delete().eq('id', mov.id)
-          if (!error) cargarDatos()
-      }
+
+      const { error } = await supabase.from('movimientos_billetera').delete().eq('id', mov.id)
+      if (error) alert("Error al eliminar: " + error.message)
+      else cargarDatos()
   }
 
   // --- LÓGICA DE DATOS ---
@@ -1868,28 +2445,18 @@ function CuentasSocios() {
   }
 
   const getMovimientosProcesados = () => {
-      // 1. Filtrar
       let data = movimientos.filter(m => {
-          // Filtro Tipo
           if (filtros.tipo !== 'Todos' && m.tipo !== filtros.tipo) return false
-          
-          // Filtro Socio
           if (filtros.socio !== 'Todos' && m.socio_id.toString() !== filtros.socio) return false
-
-          // Filtro Fecha (Año/Mes)
-          const [anio, mes] = m.fecha.split('-') // YYYY-MM-DD
+          const [anio, mes] = m.fecha.split('-') 
           if (filtros.year !== 'Todos' && anio !== filtros.year) return false
           if (filtros.month !== 'Todos' && parseInt(mes).toString() !== filtros.month) return false
-
           return true
       })
 
-      // 2. Ordenar
       data.sort((a, b) => {
           let valA = a[sortConfig.key]
           let valB = b[sortConfig.key]
-
-          // Casos especiales de ordenamiento
           if (sortConfig.key === 'socio') {
               valA = a.socios?.nombre || ''
               valB = b.socios?.nombre || ''
@@ -1898,35 +2465,35 @@ function CuentasSocios() {
               valA = parseFloat(valA)
               valB = parseFloat(valB)
           }
-
           if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1
           if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1
           return 0
       })
-
       return data
   }
 
   const styles = {
     container: { width: '90%', maxWidth: '1400px', margin: '0 auto', padding: '20px 0' },
+    
     headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     title: { fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', display:'flex', alignItems:'center', gap:10 },
-    tabs: { display: 'flex', gap: 10, backgroundColor: '#f3f4f6', padding: 4, borderRadius: 8, width: 'fit-content' },
-    tab: (active) => ({
-        padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
-        backgroundColor: active ? 'white' : 'transparent', color: active ? '#111827' : '#6b7280',
-        boxShadow: active ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.2s'
+    
+    tabsContainer: { display:'flex', gap:5, backgroundColor:'#e5e7eb', padding:4, borderRadius:8 },
+    tabBtn: (active) => ({
+        padding:'8px 16px', borderRadius:6, border:'none', cursor:'pointer', fontWeight:'bold', fontSize:'0.9rem',
+        backgroundColor: active ? 'white' : 'transparent', color: active ? '#111827' : '#6b7280', display:'flex', gap:8, alignItems:'center',
+        boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
     }),
     
-    // Filtros
     filterBar: { 
         display: 'flex', gap: 12, alignItems: 'center', marginBottom: 20, flexWrap:'wrap', 
         backgroundColor: '#f9fafb', padding: '15px', borderRadius: '12px', border: '1px solid #e5e7eb'
     },
     labelFilter: { fontSize: '0.85rem', fontWeight: 'bold', color: '#4b5563', marginRight: 5 },
     selectControl: { padding: '8px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem', color: '#374151', minWidth: 120 },
+    
+    btnNew: { backgroundColor: '#1f2937', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, marginLeft:'auto' },
 
-    // Grid Socios
     gridSocios: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' },
     cardSocio: { backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', overflow: 'hidden' },
     cardHeader: { padding: '15px 20px', borderBottom: '1px solid #f9fafb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff' },
@@ -1944,7 +2511,6 @@ function CuentasSocios() {
         border: `1px solid ${tipo === 'Aporte' ? '#bbf7d0' : '#fecaca'}`
     }),
 
-    // Tabla
     tableContainer: { backgroundColor: 'white', borderRadius: '10px', border: '1px solid #e5e7eb', overflow: 'hidden' },
     table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' },
     th: { textAlign: 'left', padding: '12px 15px', backgroundColor: '#f9fafb', color: '#6b7280', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '1px solid #e5e7eb', cursor: 'pointer', userSelect: 'none' },
@@ -1957,10 +2523,10 @@ function CuentasSocios() {
     btnIcon: { border: 'none', background: 'none', cursor: 'pointer', padding: 4 }
   }
 
-  // Helper para header sorteable
-  const ThSort = ({ k, label }) => (
-      <th style={styles.th} onClick={() => handleSort(k)}>
-          <div style={{display:'flex', alignItems:'center', gap:5}}>
+  // --- MODIFICADO: ACEPTA ALIGN Y CENTRADO POR DEFECTO PARA MONTO ---
+  const ThSort = ({ k, label, align = 'left' }) => (
+      <th style={{...styles.th, textAlign: align}} onClick={() => handleSort(k)}>
+          <div style={{display:'flex', alignItems:'center', gap:5, justifyContent: align === 'right' ? 'flex-end' : (align === 'center' ? 'center' : 'flex-start')}}>
               {label}
               {sortConfig.key === k && (
                   <ArrowUpDown size={14} color={sortConfig.direction === 'asc' ? '#2563eb' : '#9ca3af'} />
@@ -1974,25 +2540,20 @@ function CuentasSocios() {
   return (
     <div style={styles.container}>
         <div style={styles.headerRow}>
-            <div style={{display:'flex', flexDirection:'column', gap:10}}>
-                <h1 style={styles.title}><Users size={28}/> Socios & Capital</h1>
-                <div style={styles.tabs}>
-                    <button onClick={() => setActiveTab('resumen')} style={styles.tab(activeTab === 'resumen')}>📊 Resumen Saldos</button>
-                    <button onClick={() => setActiveTab('historial')} style={styles.tab(activeTab === 'historial')}>📝 Historial Movimientos</button>
-                </div>
-            </div>
+            <h1 style={styles.title}><Users size={28}/> Socios & Capital</h1>
             
-            <button 
-                onClick={() => { setModalConfig({ socioId: null, tipo: 'Aporte', data: null }); setModalOpen(true) }}
-                style={{ backgroundColor:'#1f2937', color:'white', border:'none', padding:'10px 20px', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}
-            >
-                <Wallet size={18}/> Registrar Movimiento
-            </button>
+            <div style={styles.tabsContainer}>
+                <button onClick={() => setActiveTab('resumen')} style={styles.tabBtn(activeTab === 'resumen')}>
+                    <LayoutGrid size={16}/> Resumen
+                </button>
+                <button onClick={() => setActiveTab('historial')} style={styles.tabBtn(activeTab === 'historial')}>
+                    <List size={16}/> Historial
+                </button>
+            </div>
         </div>
 
         {activeTab === 'resumen' && (
             <div>
-                {/* Filtro Resumen solo para orden */}
                 <div style={{...styles.filterBar, justifyContent:'flex-end'}}>
                     <div style={{display:'flex', alignItems:'center', gap:8, fontSize:'0.9rem', color:'#6b7280'}}>
                         <ArrowUpDown size={16}/> Ordenar por:
@@ -2002,7 +2563,15 @@ function CuentasSocios() {
                         <option value="saldo_desc">Mayor Saldo</option>
                         <option value="saldo_asc">Menor Saldo</option>
                     </select>
+                    
+                    <button 
+                        onClick={() => { setModalConfig({ socioId: null, tipo: 'Aporte', data: null }); setModalOpen(true) }}
+                        style={styles.btnNew}
+                    >
+                        <Wallet size={18}/> Registrar Movimiento
+                    </button>
                 </div>
+
                 <div style={styles.gridSocios}>
                     {getSociosOrdenados().map(socio => (
                         <div key={socio.socio_id || socio.id} style={styles.cardSocio}>
@@ -2045,7 +2614,6 @@ function CuentasSocios() {
 
         {activeTab === 'historial' && (
             <div>
-                {/* BARRA DE FILTROS AVANZADA */}
                 <div style={styles.filterBar}>
                     <div style={{display:'flex', alignItems:'center'}}>
                         <span style={styles.labelFilter}>Año:</span>
@@ -2086,10 +2654,16 @@ function CuentasSocios() {
                         </select>
                     </div>
                     
-                    {/* Indicador de resultados */}
-                    <div style={{marginLeft:'auto', fontSize:'0.85rem', color:'#6b7280'}}>
-                        <strong>{movsFiltrados.length}</strong> movimientos encontrados
-                    </div>
+                    <button 
+                        onClick={() => { setModalConfig({ socioId: null, tipo: 'Aporte', data: null }); setModalOpen(true) }}
+                        style={styles.btnNew}
+                    >
+                        <Wallet size={18}/> Registrar
+                    </button>
+                </div>
+                
+                <div style={{marginBottom:10, textAlign:'right', fontSize:'0.85rem', color:'#6b7280'}}>
+                    <strong>{movsFiltrados.length}</strong> movimientos encontrados
                 </div>
 
                 <div style={styles.tableContainer}>
@@ -2101,7 +2675,8 @@ function CuentasSocios() {
                                 <ThSort k="tipo" label="Tipo" />
                                 <th style={styles.th}>Origen</th>
                                 <th style={styles.th}>Detalle</th>
-                                <ThSort k="monto" label="Monto" />
+                                {/* CENTRADO */}
+                                <ThSort k="monto" label="Monto" align="center"/>
                                 <th style={{...styles.th, width: 80}}>Acciones</th>
                             </tr>
                         </thead>
@@ -2124,7 +2699,8 @@ function CuentasSocios() {
                                             </div>
                                         </td>
                                         <td style={styles.td}>{infoOrigen.detalle}</td>
-                                        <td style={{...styles.td, textAlign:'right', fontWeight:'bold', fontFamily:'monospace'}}>
+                                        {/* CENTRADO */}
+                                        <td style={{...styles.td, textAlign:'center', fontWeight:'bold', fontFamily:'monospace'}}>
                                             {formatMoney(mov.monto)}
                                         </td>
                                         <td style={styles.td}>
@@ -2139,8 +2715,8 @@ function CuentasSocios() {
 
                                                 <button 
                                                     onClick={() => handleEliminar(mov)} 
-                                                    style={{...styles.btnIcon, color: infoOrigen.esSistema ? '#d1d5db' : '#ef4444', cursor: infoOrigen.esSistema ? 'not-allowed' : 'pointer'}}
-                                                    title={infoOrigen.esSistema ? "Bloqueado: Eliminar desde Documento" : "Eliminar"}
+                                                    style={{...styles.btnIcon, color: infoOrigen.esSistema ? '#d1d5db' : '#ef4444', cursor: 'pointer'}} 
+                                                    title="Eliminar registro"
                                                 >
                                                     <Trash2 size={16}/>
                                                 </button>
@@ -2155,7 +2731,6 @@ function CuentasSocios() {
             </div>
         )}
 
-        {/* MODAL MOVIMIENTO MANUAL (SIMPLE) */}
         <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={modalConfig.data ? "Editar Movimiento" : "Registrar Movimiento"}>
             {modalOpen && (
                 <FormularioMovimiento 
@@ -2168,7 +2743,6 @@ function CuentasSocios() {
             )}
         </Modal>
 
-        {/* MODAL MOVIMIENTO SISTEMA (GASTO COMPLETO) */}
         <Modal isOpen={modalGastoOpen} onClose={() => setModalGastoOpen(false)} title="Editar Documento / Gasto">
             {modalGastoOpen && (
                 <NuevoGasto 
@@ -2532,7 +3106,7 @@ ARCHIVO: src/pages/Clientes.jsx
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { Users, Plus, Pencil, Trash2, Search, ArrowUpDown, Mail, Phone, MapPin } from 'lucide-react'
+import { Users, Plus, Pencil, Archive, Search, ArrowUpDown, Mail, Phone, MapPin, UserCheck } from 'lucide-react' // Usamos Archive en vez de Trash2
 import Modal from '../components/Modal'
 import NuevoCliente from './NuevoCliente'
 
@@ -2549,7 +3123,12 @@ function Clientes() {
   }, [])
 
   async function cargarClientes() {
-    const { data } = await supabase.from('clientes').select('*').order('nombre')
+    // FILTRO: Solo cargamos los activos
+    const { data } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('activo', true) 
+        .order('nombre')
     setClientes(data || [])
   }
 
@@ -2568,11 +3147,33 @@ function Clientes() {
     (c.rut && c.rut.includes(filtro))
   )
 
-  const eliminar = async (id) => {
-      if(confirm("¿Eliminar cliente?")) {
-          await supabase.from('clientes').delete().eq('id', id)
-          cargarClientes()
+  // CAMBIO: Borrado Lógico (Archivar)
+  const archivar = async (id) => {
+      if(confirm("¿Archivar este cliente? Se mantendrá el historial pero no aparecerá en listas nuevas.")) {
+          const { error } = await supabase.from('clientes').update({ activo: false }).eq('id', id)
+          if(error) alert('Error al archivar: ' + error.message)
+          else cargarClientes()
       }
+  }
+
+  // Helper para mostrar resumen de contactos
+  const RenderContactos = ({ contactos }) => {
+      if (!contactos || contactos.length === 0) return <span style={{color:'#9ca3af', fontStyle:'italic', fontSize:'0.8rem'}}>Sin contactos</span>
+      
+      const principal = contactos[0]
+      const extra = contactos.length - 1
+
+      return (
+          <div style={{display:'flex', flexDirection:'column', gap:2}}>
+              <div style={{display:'flex', alignItems:'center', gap:4, fontWeight:'500', fontSize:'0.85rem'}}>
+                 <UserCheck size={13} color="#4b5563"/> {principal.nombre}
+              </div>
+              <div style={{fontSize:'0.75rem', color:'#6b7280', paddingLeft:18}}>
+                  {principal.cargo || 'Contacto'} 
+                  {extra > 0 && <span style={{marginLeft:5, backgroundColor:'#e5e7eb', padding:'0 4px', borderRadius:4, fontSize:'0.7rem'}}>+{extra} más</span>}
+              </div>
+          </div>
+      )
   }
 
   // Estilos
@@ -2583,13 +3184,11 @@ function Clientes() {
     search: { padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', width: '250px' },
     btnNew: { backgroundColor: '#1f2937', color: 'white', padding: '10px 15px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', gap: 5, alignItems: 'center' },
     
-    // Tabla
     tableContainer: { backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' },
     table: { width: '100%', borderCollapse: 'collapse' },
     th: { backgroundColor: '#f9fafb', padding: '12px', textAlign: 'left', fontSize: '0.85rem', color: '#6b7280', fontWeight: '600', cursor: 'pointer', borderBottom:'1px solid #e5e7eb' },
     td: { padding: '12px', borderBottom: '1px solid #f9fafb', fontSize: '0.9rem', color: '#374151' },
     
-    // Data Chips
     chip: { display:'inline-flex', alignItems:'center', gap:5, padding:'2px 8px', borderRadius:'12px', backgroundColor:'#f3f4f6', color:'#4b5563', fontSize:'0.8rem', marginRight:5 }
   }
 
@@ -2608,7 +3207,7 @@ function Clientes() {
         <div style={{display:'flex', gap:10}}>
             <div style={{position:'relative'}}>
                 <Search size={16} style={{position:'absolute', left:10, top:10, color:'#9ca3af'}}/>
-                <input type="text" placeholder="Buscar por nombre o RUT..." value={filtro} onChange={e => setFiltro(e.target.value)} style={{...styles.search, paddingLeft:35}} />
+                <input type="text" placeholder="Buscar..." value={filtro} onChange={e => setFiltro(e.target.value)} style={{...styles.search, paddingLeft:35}} />
             </div>
             <button onClick={() => { setEditId(null); setModalOpen(true) }} style={styles.btnNew}><Plus size={18}/> Nuevo</button>
         </div>
@@ -2618,9 +3217,9 @@ function Clientes() {
         <table style={styles.table}>
             <thead>
                 <tr>
-                    <ThSort label="Nombre / Razón Social" sortKey="nombre" />
+                    <ThSort label="Empresa / Razón Social" sortKey="nombre" />
                     <ThSort label="RUT" sortKey="rut" />
-                    <ThSort label="Contacto" sortKey="email" />
+                    <th style={styles.th}>Contactos Clave</th>
                     <ThSort label="Ubicación" sortKey="direccion" />
                     <th style={styles.th}></th>
                 </tr>
@@ -2630,13 +3229,16 @@ function Clientes() {
                     <tr key={c.id}>
                         <td style={styles.td}>
                             <strong>{c.nombre}</strong>
+                            <div style={{fontSize:'0.8rem', color:'#6b7280'}}>{c.tipo}</div>
                         </td>
                         <td style={styles.td}>{c.rut || '-'}</td>
                         <td style={styles.td}>
-                            <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                                {c.email && <span style={styles.chip}><Mail size={12}/> {c.email}</span>}
-                                {c.telefono && <span style={styles.chip}><Phone size={12}/> {c.telefono}</span>}
-                            </div>
+                           {/* Renderizamos los contactos guardados en JSON */}
+                           <RenderContactos contactos={c.contactos} />
+                           {/* Si hay contacto general (legacy), lo mostramos si no hay contactos específicos */}
+                           {(!c.contactos || c.contactos.length === 0) && c.email && 
+                              <div style={{marginTop:4}}><span style={styles.chip}><Mail size={10}/> {c.email}</span></div>
+                           }
                         </td>
                         <td style={styles.td}>
                             {c.direccion && <span style={{display:'flex', alignItems:'center', gap:4, color:'#6b7280'}}><MapPin size={14}/> {c.direccion}</span>}
@@ -2644,12 +3246,12 @@ function Clientes() {
                         <td style={styles.td}>
                             <div style={{display:'flex', gap:5, justifyContent:'flex-end'}}>
                                 <button onClick={() => { setEditId(c.id); setModalOpen(true) }} style={{border:'none', background:'none', color:'#2563eb', cursor:'pointer'}}><Pencil size={16}/></button>
-                                <button onClick={() => eliminar(c.id)} style={{border:'none', background:'none', color:'#ef4444', cursor:'pointer'}}><Trash2 size={16}/></button>
+                                <button onClick={() => archivar(c.id)} style={{border:'none', background:'none', color:'#d97706', cursor:'pointer'}} title="Archivar"><Archive size={16}/></button>
                             </div>
                         </td>
                     </tr>
                 ))}
-                {sortedData.length === 0 && <tr><td colSpan="5" style={{textAlign:'center', padding:30, color:'#9ca3af'}}>No se encontraron clientes.</td></tr>}
+                {sortedData.length === 0 && <tr><td colSpan="5" style={{textAlign:'center', padding:30, color:'#9ca3af'}}>No se encontraron clientes activos.</td></tr>}
             </tbody>
         </table>
       </div>
@@ -2669,7 +3271,7 @@ ARCHIVO: src/pages/Proveedores.jsx
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { Truck, Plus, Pencil, Trash2, Search, ArrowUpDown, Mail, Phone, User } from 'lucide-react'
+import { Truck, Plus, Pencil, Archive, Search, ArrowUpDown, Mail, Phone, UserCheck } from 'lucide-react'
 import Modal from '../components/Modal'
 import NuevoProveedor from './NuevoProveedor'
 
@@ -2686,7 +3288,12 @@ function Proveedores() {
   }, [])
 
   async function cargarDatos() {
-    const { data } = await supabase.from('proveedores').select('*').order('nombre')
+    // FILTRO ACTIVO
+    const { data } = await supabase
+        .from('proveedores')
+        .select('*')
+        .eq('activo', true) 
+        .order('nombre')
     setProveedores(data || [])
   }
 
@@ -2705,11 +3312,32 @@ function Proveedores() {
     (p.rut && p.rut.includes(filtro))
   )
 
-  const eliminar = async (id) => {
-      if(confirm("¿Eliminar proveedor?")) {
-          await supabase.from('proveedores').delete().eq('id', id)
-          cargarDatos()
+  // SOFT DELETE
+  const archivar = async (id) => {
+      if(confirm("¿Archivar este proveedor?")) {
+          const { error } = await supabase.from('proveedores').update({ activo: false }).eq('id', id)
+          if(error) alert('Error: ' + error.message)
+          else cargarDatos()
       }
+  }
+
+  const RenderContactos = ({ contactos }) => {
+    if (!contactos || contactos.length === 0) return <span style={{color:'#9ca3af', fontStyle:'italic', fontSize:'0.8rem'}}>Sin contactos</span>
+    
+    const principal = contactos[0]
+    const extra = contactos.length - 1
+
+    return (
+        <div style={{display:'flex', flexDirection:'column', gap:2}}>
+            <div style={{display:'flex', alignItems:'center', gap:4, fontWeight:'500', fontSize:'0.85rem'}}>
+               <UserCheck size={13} color="#4b5563"/> {principal.nombre}
+            </div>
+            <div style={{fontSize:'0.75rem', color:'#6b7280', paddingLeft:18}}>
+                {principal.cargo || 'Contacto'} 
+                {extra > 0 && <span style={{marginLeft:5, backgroundColor:'#e5e7eb', padding:'0 4px', borderRadius:4, fontSize:'0.7rem'}}>+{extra} más</span>}
+            </div>
+        </div>
+    )
   }
 
   const styles = {
@@ -2752,8 +3380,8 @@ function Proveedores() {
                 <tr>
                     <ThSort label="Nombre / Razón" sortKey="nombre" />
                     <ThSort label="RUT" sortKey="rut" />
-                    <ThSort label="Contacto" sortKey="email" />
-                    <ThSort label="Persona Contacto" sortKey="contacto" />
+                    <th style={styles.th}>Contactos / Vendedores</th>
+                    <ThSort label="Email Central" sortKey="email" />
                     <th style={styles.th}></th>
                 </tr>
             </thead>
@@ -2763,23 +3391,20 @@ function Proveedores() {
                         <td style={styles.td}><strong>{p.nombre}</strong></td>
                         <td style={styles.td}>{p.rut || '-'}</td>
                         <td style={styles.td}>
-                            <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                                {p.email && <span style={styles.chip}><Mail size={12}/> {p.email}</span>}
-                                {p.telefono && <span style={styles.chip}><Phone size={12}/> {p.telefono}</span>}
-                            </div>
+                            <RenderContactos contactos={p.contactos} />
                         </td>
                         <td style={styles.td}>
-                            {p.contacto && <span style={{display:'flex', alignItems:'center', gap:4, color:'#6b7280'}}><User size={14}/> {p.contacto}</span>}
+                            {p.email && <span style={styles.chip}><Mail size={12}/> {p.email}</span>}
                         </td>
                         <td style={styles.td}>
                             <div style={{display:'flex', gap:5, justifyContent:'flex-end'}}>
                                 <button onClick={() => { setEditId(p.id); setModalOpen(true) }} style={{border:'none', background:'none', color:'#2563eb', cursor:'pointer'}}><Pencil size={16}/></button>
-                                <button onClick={() => eliminar(p.id)} style={{border:'none', background:'none', color:'#ef4444', cursor:'pointer'}}><Trash2 size={16}/></button>
+                                <button onClick={() => archivar(p.id)} style={{border:'none', background:'none', color:'#d97706', cursor:'pointer'}} title="Archivar"><Archive size={16}/></button>
                             </div>
                         </td>
                     </tr>
                 ))}
-                {sortedData.length === 0 && <tr><td colSpan="5" style={{textAlign:'center', padding:30, color:'#9ca3af'}}>No hay proveedores registrados.</td></tr>}
+                {sortedData.length === 0 && <tr><td colSpan="5" style={{textAlign:'center', padding:30, color:'#9ca3af'}}>No hay proveedores activos.</td></tr>}
             </tbody>
         </table>
       </div>
@@ -2962,7 +3587,7 @@ ARCHIVO: src/pages/ConfiguracionCampo.jsx
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { MapPin, Map, Plus, Pencil, Trash2, TreeDeciduous, Ruler, Droplets } from 'lucide-react'
+import { MapPin, Map, Plus, Pencil, Archive, TreeDeciduous, Ruler, Droplets, Activity, Clock } from 'lucide-react'
 import Modal from '../components/Modal'
 import NuevaParcela from './NuevaParcela'
 import NuevoSector from './NuevoSector'
@@ -2985,20 +3610,42 @@ function ConfiguracionCampo() {
   async function cargarDatos() {
     setLoading(true)
     try {
-      const { data: parcelas } = await supabase.from('parcelas').select('*').order('nombre')
-      const { data: sectores } = await supabase.from('sectores').select('*').order('nombre')
+      // 1. CARGAMOS SOLO LOS ACTIVOS
+      const { data: parcelas } = await supabase
+        .from('parcelas')
+        .select('*')
+        .eq('activo', true)
+        .order('nombre')
+
+      const { data: sectores } = await supabase
+        .from('sectores')
+        .select('*')
+        .eq('activo', true)
+        .order('nombre')
 
       if (parcelas && sectores) {
-        // Armamos la estructura
+        // Armamos la estructura y calculamos totales
         const estructura = parcelas.map(p => {
             const misSectores = sectores.filter(s => s.parcela_id === p.id)
+            
+            // Cálculos acumulados
             const totalArboles = misSectores.reduce((acc, s) => acc + (s.cantidad_arboles || 0), 0)
             const totalHa = misSectores.reduce((acc, s) => acc + (s.superficie_ha || 0), 0)
+            const totalAspersores = misSectores.reduce((acc, s) => acc + (s.cantidad_aspersores || 0), 0)
             
+            // Calculamos caudal total en m3/h (L/h * cantidad / 1000)
+            const totalCaudalLPH = misSectores.reduce((acc, s) => acc + ((s.cantidad_aspersores || 0) * (s.caudal_lph || 0)), 0)
+            const totalCaudalM3 = totalCaudalLPH / 1000
+
             return {
                 ...p,
                 sectores: misSectores,
-                stats: { arboles: totalArboles, has: totalHa }
+                stats: { 
+                    arboles: totalArboles, 
+                    has: totalHa,
+                    aspersores: totalAspersores,
+                    caudalM3: totalCaudalM3
+                }
             }
         })
         setArbol(estructura)
@@ -3015,18 +3662,31 @@ function ConfiguracionCampo() {
   const abrirEditarParcela = (id) => { setEditParcelaId(id); setModalParcelaOpen(true) }
   const abrirEditarSector = (id) => { setEditSectorId(id); setModalSectorOpen(true) }
 
-  const eliminarParcela = async (id) => {
-      if(confirm("¿Eliminar parcela y TODOS sus sectores?")) {
-          await supabase.from('parcelas').delete().eq('id', id)
-          cargarDatos()
+  // SOFT DELETE
+  const archivarParcela = async (id) => {
+      if(confirm("¿Archivar esta parcela? Desaparecerá de la lista principal pero se mantendrá en el historial.")) {
+          const { error } = await supabase.from('parcelas').update({ activo: false }).eq('id', id)
+          if (error) alert('Error al archivar: ' + error.message)
+          else cargarDatos()
       }
   }
 
-  const eliminarSector = async (id) => {
-      if(confirm("¿Eliminar sector?")) {
-          await supabase.from('sectores').delete().eq('id', id)
-          cargarDatos()
+  const archivarSector = async (id) => {
+      if(confirm("¿Archivar este sector?")) {
+          const { error } = await supabase.from('sectores').update({ activo: false }).eq('id', id)
+          if (error) alert('Error al archivar: ' + error.message)
+          else cargarDatos()
       }
+  }
+
+  // Helper para calcular estado/edad del huerto
+  const getEstadoHuerto = (anoPlantacion) => {
+      if (!anoPlantacion) return { label: 'Sin info', color: '#9ca3af' }
+      const antiguedad = new Date().getFullYear() - anoPlantacion
+      
+      if (antiguedad < 2) return { label: '🌱 Nuevo', color: '#10b981' } // Verde esmeralda
+      if (antiguedad < 5) return { label: '🌿 Crecimiento', color: '#84cc16' } // Verde lima
+      return { label: '🌳 Adulto', color: '#15803d' } // Verde oscuro
   }
 
   const styles = {
@@ -3036,17 +3696,22 @@ function ConfiguracionCampo() {
     btnNew: { padding:'10px 20px', backgroundColor:'#1f2937', color:'white', borderRadius:'8px', border:'none', fontWeight:'bold', display:'flex', alignItems:'center', gap:8, cursor:'pointer' },
     
     parcelaContainer: { backgroundColor:'white', borderRadius:12, padding:20, marginBottom:30, border:'1px solid #e5e7eb', boxShadow:'0 2px 4px rgba(0,0,0,0.05)' },
-    parcelaHeader: { display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'2px solid #f3f4f6', paddingBottom:15, marginBottom:15 },
-    parcelaTitle: { fontSize:'1.2rem', fontWeight:'bold', color:'#374151', display:'flex', alignItems:'center', gap:10 },
-    parcelaStats: { display:'flex', gap:15, fontSize:'0.9rem', color:'#6b7280' },
-    statBadge: { backgroundColor:'#f3f4f6', padding:'4px 10px', borderRadius:20, fontWeight:'600', color:'#4b5563' },
-
-    gridSectores: { display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:15 },
-    sectorCard: { backgroundColor:'#f9fafb', padding:15, borderRadius:8, border:'1px solid #e5e7eb', position:'relative' },
-    sectorName: { fontWeight:'bold', color:'#111827', marginBottom:5, fontSize:'1rem' },
-    sectorDetail: { fontSize:'0.85rem', color:'#4b5563', display:'flex', alignItems:'center', gap:6, marginBottom:4 },
+    parcelaHeader: { display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'2px solid #f3f4f6', paddingBottom:15, marginBottom:15, flexWrap: 'wrap', gap: 10 },
+    parcelaTitle: { fontSize:'1.2rem', fontWeight:'bold', color:'#374151', display:'flex', alignItems:'center', gap:10, minWidth: '200px' },
     
-    actions: { display:'flex', justifyContent:'flex-end', gap:8, marginTop:10, borderTop:'1px dashed #d1d5db', paddingTop:8 },
+    // Stats mejorados
+    statsContainer: { display:'flex', gap:10, flexWrap:'wrap', flex: 1, justifyContent: 'flex-end', marginRight: 15 },
+    statBadge: { display:'flex', alignItems:'center', gap:6, backgroundColor:'#f8fafc', padding:'6px 12px', borderRadius:8, border:'1px solid #e2e8f0', fontSize:'0.85rem', color:'#475569', fontWeight:500 },
+    
+    gridSectores: { display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:15 },
+    sectorCard: { backgroundColor:'#f9fafb', padding:15, borderRadius:8, border:'1px solid #e5e7eb', position:'relative', display:'flex', flexDirection:'column', gap:8 },
+    sectorHeader: { display:'flex', justifyContent:'space-between', alignItems:'flex-start' },
+    sectorName: { fontWeight:'bold', color:'#111827', fontSize:'1rem' },
+    
+    // Detalles del sector densos
+    detailRow: { display:'flex', justifyContent:'space-between', fontSize:'0.85rem', color:'#4b5563', borderBottom:'1px dashed #e5e7eb', paddingBottom:4 },
+    
+    actions: { display:'flex', justifyContent:'flex-end', gap:8, marginTop:'auto', paddingTop:10 },
     btnIcon: { background:'none', border:'none', cursor:'pointer', color:'#6b7280' }
   }
 
@@ -3070,16 +3735,27 @@ function ConfiguracionCampo() {
                 <div style={styles.parcelaTitle}>
                     <Map size={20} color="#4b5563"/> {p.nombre}
                 </div>
-                <div style={{display:'flex', alignItems:'center', gap:15}}>
-                    <div style={styles.parcelaStats}>
-                        <span style={styles.statBadge}>{p.stats.has.toFixed(1)} Ha</span>
-                        <span style={styles.statBadge}>{p.stats.arboles} Árboles</span>
+                
+                <div style={styles.statsContainer}>
+                    <div style={styles.statBadge} title="Superficie Total">
+                        <Ruler size={14}/> {p.stats.has.toFixed(1)} Ha
                     </div>
-                    {/* CORRECCIÓN AQUÍ: Se fusionaron los estilos */}
-                    <div style={{...styles.actions, margin:0, border:0, padding:0}}>
-                        <button onClick={() => abrirEditarParcela(p.id)} style={styles.btnIcon}><Pencil size={18}/></button>
-                        <button onClick={() => eliminarParcela(p.id)} style={{...styles.btnIcon, color:'#ef4444'}}><Trash2 size={18}/></button>
+                    <div style={styles.statBadge} title="Total Árboles">
+                        <TreeDeciduous size={14}/> {p.stats.arboles}
                     </div>
+                    <div style={styles.statBadge} title="Total Aspersores">
+                        <Droplets size={14}/> {p.stats.aspersores} asp
+                    </div>
+                    <div style={{...styles.statBadge, backgroundColor:'#eff6ff', borderColor:'#bfdbfe', color:'#1e40af'}} title="Capacidad de Riego Total">
+                        <Activity size={14}/> {p.stats.caudalM3.toFixed(1)} m³/h
+                    </div>
+                </div>
+
+                <div style={{display:'flex', gap:5}}>
+                    <button onClick={() => abrirEditarParcela(p.id)} style={styles.btnIcon}><Pencil size={18}/></button>
+                    <button onClick={() => archivarParcela(p.id)} style={{...styles.btnIcon, color:'#d97706'}} title="Archivar Parcela">
+                        <Archive size={18}/>
+                    </button>
                 </div>
             </div>
 
@@ -3088,26 +3764,44 @@ function ConfiguracionCampo() {
                     <div style={{color:'#9ca3af', fontStyle:'italic', padding:10}}>Sin sectores registrados.</div>
                 ) : (
                     p.sectores.map(s => {
-                        // Calcular ratio visualmente
                         const ratio = s.cantidad_arboles > 0 ? (s.cantidad_aspersores / s.cantidad_arboles).toFixed(1) : '0'
-                        
+                        const estado = getEstadoHuerto(s.ano_plantacion)
+
                         return (
                             <div key={s.id} style={styles.sectorCard}>
-                                <div style={styles.sectorName}>{s.nombre}</div>
-                                <div style={styles.sectorDetail}>
-                                    <Ruler size={14}/> {s.superficie_ha} Ha
+                                <div style={styles.sectorHeader}>
+                                    <div>
+                                        <div style={styles.sectorName}>{s.nombre}</div>
+                                        <span style={{fontSize:'0.75rem', fontWeight:'bold', color: estado.color, backgroundColor:'#f0fdf4', padding:'2px 6px', borderRadius:4}}>
+                                            {estado.label}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div style={styles.sectorDetail}>
-                                    <TreeDeciduous size={14}/> {s.cantidad_arboles} plantas
-                                </div>
-                                <div style={styles.sectorDetail}>
-                                    <Droplets size={14} color="#3b82f6"/> 
-                                    <strong>{ratio}</strong> asp/planta
+                                
+                                <div>
+                                    <div style={styles.detailRow}>
+                                        <span><Ruler size={12} style={{marginRight:4, verticalAlign:'text-bottom'}}/> Superficie:</span>
+                                        <strong>{s.superficie_ha} Ha</strong>
+                                    </div>
+                                    <div style={styles.detailRow}>
+                                        <span><TreeDeciduous size={12} style={{marginRight:4, verticalAlign:'text-bottom'}}/> Plantas:</span>
+                                        <strong>{s.cantidad_arboles} ({s.variedad})</strong>
+                                    </div>
+                                    <div style={styles.detailRow}>
+                                        <span><Droplets size={12} style={{marginRight:4, verticalAlign:'text-bottom'}}/> Riego:</span>
+                                        <strong>{ratio} asp/planta</strong>
+                                    </div>
+                                    <div style={{...styles.detailRow, borderBottom:'none', color:'#2563eb'}}>
+                                        <span><Activity size={12} style={{marginRight:4, verticalAlign:'text-bottom'}}/> Caudal:</span>
+                                        <strong>{s.caudal_lph} L/h</strong>
+                                    </div>
                                 </div>
 
                                 <div style={styles.actions}>
                                     <button onClick={() => abrirEditarSector(s.id)} style={styles.btnIcon}><Pencil size={16}/></button>
-                                    <button onClick={() => eliminarSector(s.id)} style={{...styles.btnIcon, color:'#ef4444'}}><Trash2 size={16}/></button>
+                                    <button onClick={() => archivarSector(s.id)} style={{...styles.btnIcon, color:'#d97706'}} title="Archivar Sector">
+                                        <Archive size={16}/>
+                                    </button>
                                 </div>
                             </div>
                         )
@@ -3117,7 +3811,7 @@ function ConfiguracionCampo() {
         </div>
       ))}
       
-      {arbol.length === 0 && !loading && <div style={{textAlign:'center', padding:'40px', color:'#6b7280'}}>No hay parcelas creadas. Comienza creando una.</div>}
+      {arbol.length === 0 && !loading && <div style={{textAlign:'center', padding:'40px', color:'#6b7280'}}>No hay parcelas activas. Comienza creando una.</div>}
 
       <Modal isOpen={modalParcelaOpen} onClose={() => handleClose(setModalParcelaOpen)} title={editParcelaId ? "Editar Parcela" : "Nueva Parcela"}>
           {modalParcelaOpen && <NuevaParcela idParcela={editParcelaId} cerrarModal={() => setModalParcelaOpen(false)} alGuardar={() => { setModalParcelaOpen(false); cargarDatos(); }} />}
