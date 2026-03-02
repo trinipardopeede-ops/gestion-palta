@@ -6,6 +6,68 @@ import {
     Droplets, TestTube, Scissors, CircleDot, Leaf, Hammer, ClipboardList, Map
 } from 'lucide-react'
 
+// --- HELPER: ALGORITMO DE DISTRIBUCIÓN EXACTA ("RESTO AL ÚLTIMO") ---
+const calcularDistribucionExacta = (montoTotal, idsSeleccionados, listaParcelas, metodo) => {
+    // Aplanar todos los sectores disponibles para buscarlos por ID
+    const todosSectores = listaParcelas.flatMap(p => p.sectores || []);
+    const sectoresTarget = todosSectores.filter(s => idsSeleccionados.includes(s.id));
+    
+    if (sectoresTarget.length === 0 || montoTotal <= 0) return [];
+
+    let distribucion = [];
+    let montoAcumulado = 0;
+    const totalItems = sectoresTarget.length;
+
+    // Calcular el denominador según el método
+    let denominadorTotal = 0;
+    if (metodo === 'Equitativo') {
+        denominadorTotal = totalItems;
+    } else if (metodo === 'Superficie') {
+        denominadorTotal = sectoresTarget.reduce((acc, s) => acc + (parseFloat(s.superficie_ha) || 0), 0);
+    } else if (metodo === 'Arboles') {
+        denominadorTotal = sectoresTarget.reduce((acc, s) => acc + (parseInt(s.cantidad_arboles) || 0), 0);
+    }
+
+    // Fallback si denominador es 0
+    if (denominadorTotal === 0 && metodo !== 'Equitativo') {
+        denominadorTotal = totalItems;
+        metodo = 'Equitativo';
+    }
+
+    // Iterar hasta el penúltimo elemento
+    for (let i = 0; i < totalItems - 1; i++) {
+        const sector = sectoresTarget[i];
+        let factor = 0;
+        
+        if (metodo === 'Equitativo') factor = 1;
+        else if (metodo === 'Superficie') factor = parseFloat(sector.superficie_ha) || 0;
+        else if (metodo === 'Arboles') factor = parseInt(sector.cantidad_arboles) || 0;
+
+        const porcentaje = (factor / denominadorTotal);
+        const montoCuota = Math.round(montoTotal * porcentaje);
+        
+        distribucion.push({
+            sector_id: sector.id,
+            monto: montoCuota,
+            porcentaje: (porcentaje * 100).toFixed(2)
+        });
+        montoAcumulado += montoCuota;
+    }
+
+    // Asignar el resto exacto al último elemento
+    const ultimoSector = sectoresTarget[totalItems - 1];
+    const montoRestante = montoTotal - montoAcumulado;
+    const porcentajeRestante = montoTotal > 0 ? (montoRestante / montoTotal) : 0;
+
+    distribucion.push({
+        sector_id: ultimoSector.id,
+        monto: montoRestante,
+        porcentaje: (porcentajeRestante * 100).toFixed(2)
+    });
+
+    return distribucion;
+};
+
 // Iconos visuales
 const ICONOS_LABOR = {
   'Riego': <Droplets size={18} color="#3b82f6"/>,
@@ -86,7 +148,6 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
       if (idLabor) cargarDatosEdicion()
   }, [idLabor])
 
-  // Filtrar subcategorías
   useEffect(() => {
       if(formData.categoria_id) {
           setSubcategoriasFiltradas(subcategorias.filter(s => s.categoria_id.toString() === formData.categoria_id.toString()))
@@ -145,7 +206,6 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
       }
   }
 
-  // Cálculos
   useEffect(() => {
       let tArboles = 0, tHas = 0
       parcelas.forEach(p => {
@@ -204,15 +264,22 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
       setInsumoTemp({ id: '', cantidad: '' }); setHasChanges(true)
   }
 
+// --- FUNCIÓN DE GUARDADO REFACTORIZADA (NUEVALABOR.JSX) ---
   const handleSubmit = async (e) => {
       e.preventDefault()
       if (sectoresSeleccionados.length === 0) return alert("Selecciona al menos un sector")
       setLoading(true)
       try {
           const totalInsumos = insumosSeleccionados.reduce((acc, i) => acc + i.subtotal, 0)
-          let metodoDist = 'superficie'
-          if (formData.modo_calculo === 'Por Arbol') metodoDist = 'arboles'
-          if (formData.modo_calculo === 'Por Ha') metodoDist = 'superficie'
+          
+          // Inferencia de lógica para BD
+          let metodoDistBD = 'superficie' 
+          if (formData.modo_calculo === 'Por Arbol') metodoDistBD = 'arboles'
+          
+          // Inferencia para Gasto
+          let metodoParaGasto = 'Superficie' 
+          if (formData.modo_calculo === 'Por Arbol') metodoParaGasto = 'Arboles'
+          if (formData.modo_calculo === 'Por Ha') metodoParaGasto = 'Superficie'
 
           const nuevaLabor = {
               fecha: formData.fecha,
@@ -220,7 +287,7 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
               proveedor_id: formData.proveedor_id || null,
               descripcion: formData.descripcion,
               sectores_ids: sectoresSeleccionados,
-              metodo_distribucion: metodoDist,
+              metodo_distribucion: metodoDistBD,
               costo_mano_obra: costoMO,
               costo_insumos: totalInsumos,
               costo_total: totalGeneral,
@@ -245,19 +312,51 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
               await supabase.from('bodega_movimientos').insert(movs)
           }
 
-          // PERMITIR INSERTAR GASTO EN CUALQUIER MOMENTO
+          // --- INSERTAR GASTO + DISTRIBUCIÓN + CUOTA PENDIENTE ---
           if (formData.pasar_a_gastos) {
-               await supabase.from('gastos').insert([{
+               // 1. Insertar Cabecera Gasto (Estado Pendiente por defecto)
+               const { data: gastoData, error: gastoError } = await supabase.from('gastos').insert([{
                   fecha: formData.fecha, 
                   monto: totalGeneral, 
                   proveedor_id: formData.proveedor_id || null,
                   descripcion: `Labor: ${formData.tipo_labor}`, 
                   tipo_documento: 'Interno', 
-                  estado_pago: 'Pendiente',
+                  estado_pago: 'Pendiente', // IMPORTANTE: Nace pendiente
                   categoria_id: formData.categoria_id, 
                   subcategoria_id: formData.subcategoria_id || null, 
+                  clase_contable: 'OPEX',
                   sectores_ids: sectoresSeleccionados,
-                  labor_origen_id: laborIdInserted // <--- CORRECCION CLAVE AQUI
+                  labor_origen_id: laborIdInserted,
+                  metodo_distribucion: metodoParaGasto
+               }]).select()
+               
+               if (gastoError) throw gastoError
+               const gastoId = gastoData[0].id
+
+               // 2. Insertar Distribución de Costos (Helper Exacto)
+               const itemsDistribucion = calcularDistribucionExacta(
+                   totalGeneral,
+                   sectoresSeleccionados,
+                   parcelas, 
+                   metodoParaGasto
+               ).map(item => ({
+                   ...item,
+                   gasto_id: gastoId
+               }));
+
+               if(itemsDistribucion.length > 0) {
+                   await supabase.from('gasto_distribucion').insert(itemsDistribucion)
+               }
+
+               // 3. (NUEVO) Insertar Cuota Pendiente en pagos_gastos
+               // Esto habilita que luego puedas ir a Gastos y pagar la cuota, asignando el socio.
+               await supabase.from('pagos_gastos').insert([{
+                   gasto_id: gastoId,
+                   fecha_vencimiento: formData.fecha,
+                   monto: totalGeneral,
+                   forma_pago: 'Transferencia', // Valor por defecto
+                   estado: 'Pendiente',         // Esperando pago real
+                   pagado_por_socio_id: null    // Aún no sabemos quién paga
                }])
           }
           alGuardar()
@@ -287,11 +386,11 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
       <div style={styles.container}>
         <div style={{display:'flex', flexDirection:'column', gap:15}}>
              <div>
-                <label style={styles.label}>Tipo de Labor</label>
+                 <label style={styles.label}>Tipo de Labor</label>
                 <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:8}}>
                     {Object.keys(ICONOS_LABOR).map(k => (
                         <div key={k} style={styles.chip(formData.tipo_labor === k)} onClick={() => updateForm('tipo_labor', k)}>
-                            {ICONOS_LABOR[k]}
+                             {ICONOS_LABOR[k]}
                             <div style={{fontSize:'0.7rem', marginTop:4}}>{k}</div>
                         </div>
                     ))}
@@ -317,7 +416,7 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
                 <label style={styles.label}>Sectores ({stats.sectores})</label>
                 {parcelas.map(p => (
                     <div key={p.id} style={{marginBottom:8}}>
-                        <div 
+                         <div 
                             style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px', backgroundColor:'#f3f4f6', borderRadius:6, cursor:'pointer'}}
                             onClick={() => toggleTodaParcela(p.id)}
                         >
@@ -411,7 +510,7 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
                             <div style={{display:'flex', gap:8}}>
                                 <strong>$ {Math.round(i.subtotal).toLocaleString('es-CL')}</strong>
                                 <Trash2 size={12} color="#ef4444" style={{cursor:'pointer'}} onClick={() => {
-                                    setInsumosSeleccionados(prev => prev.filter(x => x.uniqueId !== i.uniqueId)); setHasChanges(true)
+                                      setInsumosSeleccionados(prev => prev.filter(x => x.uniqueId !== i.uniqueId)); setHasChanges(true)
                                 }}/>
                             </div>
                         </div>
@@ -424,7 +523,7 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
                  <div style={{textAlign:'right', fontSize:'0.9rem', color:'#6b7280'}}>Costo Total Estimado</div>
                  <div style={styles.totalBig}>$ {Math.round(totalGeneral).toLocaleString('es-CL')}</div>
                  
-                 {/* SECCIÓN GASTOS: RESTAURADA CON CORRECCIÓN */}
+                 {/* SECCIÓN GASTOS: RESTAURADA CON LÓGICA DE DISTRIBUCIÓN AUTOMÁTICA */}
                  <div style={{marginTop:10, paddingTop:10, borderTop:'1px dashed #d1d5db'}}>
                      <div style={{display:'flex', gap:5, alignItems:'center', justifyContent:'flex-end', marginBottom:8}}>
                          <input type="checkbox" id="chkGasto" checked={formData.pasar_a_gastos} onChange={e => updateForm('pasar_a_gastos', e.target.checked)} style={{cursor:'pointer'}}/>
@@ -436,7 +535,7 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
                                 value={formData.categoria_id} 
                                 onChange={e => updateForm('categoria_id', e.target.value)}
                                 style={{width:'100%', padding:6, borderRadius:6, border:'1px solid #d1d5db', fontSize:'0.85rem'}}
-                             >
+                            >
                                  <option value="">Seleccionar Categoría...</option>
                                  {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                              </select>
@@ -445,7 +544,7 @@ function NuevaLabor({ idLabor, cerrarModal, alGuardar }) {
                                 onChange={e => updateForm('subcategoria_id', e.target.value)}
                                 style={{width:'100%', padding:6, borderRadius:6, border:'1px solid #d1d5db', fontSize:'0.85rem'}}
                                 disabled={!formData.categoria_id}
-                             >
+                            >
                                  <option value="">Seleccionar Subcategoría...</option>
                                  {subcategoriasFiltradas.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
                              </select>

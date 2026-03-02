@@ -2,20 +2,78 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { 
     Save, Plus, Trash2, FileText, Wallet, 
-    ShoppingCart, Map, CheckCircle2, AlertCircle
+    Map, CheckCircle2, AlertCircle, ArrowRight
 } from 'lucide-react'
 
-// Componente: Input Moneda Grande (Panel Derecho)
-const BigMoneyInput = ({ value, onChange, readOnly = false, autoFocus = false }) => {
+// --- HELPER: ALGORITMO DE DISTRIBUCIÓN EXACTA ---
+const calcularDistribucionExacta = (montoTotal, idsSeleccionados, listaParcelas, metodo) => {
+    const todosSectores = listaParcelas.flatMap(p => p.sectores || []);
+    const sectoresTarget = todosSectores.filter(s => idsSeleccionados.includes(s.id));
+    
+    if (sectoresTarget.length === 0 || montoTotal <= 0) return [];
+
+    let distribucion = [];
+    let montoAcumulado = 0;
+    const totalItems = sectoresTarget.length;
+
+    let denominadorTotal = 0;
+    if (metodo === 'Equitativo') {
+        denominadorTotal = totalItems;
+    } else if (metodo === 'Superficie') {
+        denominadorTotal = sectoresTarget.reduce((acc, s) => acc + (parseFloat(s.superficie_ha) || 0), 0);
+    } else if (metodo === 'Arboles') {
+        denominadorTotal = sectoresTarget.reduce((acc, s) => acc + (parseInt(s.cantidad_arboles) || 0), 0);
+    }
+
+    if (denominadorTotal === 0 && metodo !== 'Equitativo') {
+        denominadorTotal = totalItems;
+        metodo = 'Equitativo';
+    }
+
+    for (let i = 0; i < totalItems - 1; i++) {
+        const sector = sectoresTarget[i];
+        let factor = 0;
+        
+        if (metodo === 'Equitativo') factor = 1;
+        else if (metodo === 'Superficie') factor = parseFloat(sector.superficie_ha) || 0;
+        else if (metodo === 'Arboles') factor = parseInt(sector.cantidad_arboles) || 0;
+
+        const porcentaje = (factor / denominadorTotal);
+        const montoCuota = Math.round(montoTotal * porcentaje);
+        
+        distribucion.push({
+            sector_id: sector.id,
+            monto: montoCuota,
+            porcentaje: (porcentaje * 100).toFixed(2)
+        });
+        montoAcumulado += montoCuota;
+    }
+
+    const ultimoSector = sectoresTarget[totalItems - 1];
+    const montoRestante = montoTotal - montoAcumulado;
+    const porcentajeRestante = montoTotal > 0 ? (montoRestante / montoTotal) : 0;
+
+    distribucion.push({
+        sector_id: ultimoSector.id,
+        monto: montoRestante,
+        porcentaje: (porcentajeRestante * 100).toFixed(2)
+    });
+
+    return distribucion;
+};
+
+// Componente: Input Moneda Grande
+const BigMoneyInput = ({ value, onChange, autoFocus = false }) => {
     const [display, setDisplay] = useState('')
     useEffect(() => {
         if (value || value === 0) setDisplay('$ ' + parseInt(value).toLocaleString('es-CL'))
         else setDisplay('')
     }, [value])
+ 
     const handleChange = (e) => {
-        if (readOnly) return
         const raw = e.target.value.replace(/\D/g, '')
-        setDisplay(raw); onChange(raw)
+        setDisplay(raw);
+        onChange(raw)
     }
     return (
         <div style={{position: 'relative', width: '100%'}}>
@@ -23,14 +81,13 @@ const BigMoneyInput = ({ value, onChange, readOnly = false, autoFocus = false })
                 type="text" 
                 value={display} 
                 onChange={handleChange} 
-                readOnly={readOnly} 
                 autoFocus={autoFocus}
                 placeholder="$ 0"
                 style={{ 
                     width: '100%', padding: '15px', borderRadius: 12, 
                     border: '1px solid #d1d5db', fontSize: '1.8rem', fontWeight: '800', 
                     textAlign: 'center', boxSizing: 'border-box', outline: 'none', 
-                    backgroundColor: readOnly ? '#f9fafb' : 'white', color: '#111827' 
+                    color: '#111827' 
                 }} 
             />
             <div style={{textAlign:'center', fontSize:'0.75rem', color:'#6b7280', marginTop:4, textTransform:'uppercase', letterSpacing:1}}>Monto Total Documento</div>
@@ -38,7 +95,7 @@ const BigMoneyInput = ({ value, onChange, readOnly = false, autoFocus = false })
     )
 }
 
-// Componente: Input Moneda Pequeño (Para Tabla Cuotas)
+// Componente: Input Moneda Pequeño
 const TableMoneyInput = ({ value, onChange }) => {
     const [display, setDisplay] = useState('')
     
@@ -76,23 +133,18 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
   const [categorias, setCategorias] = useState([])
   const [subcategorias, setSubcategorias] = useState([]) 
   const [subcategoriasFiltradas, setSubcategoriasFiltradas] = useState([])
-
   const [proveedores, setProveedores] = useState([])
   const [socios, setSocios] = useState([])
   const [parcelas, setParcelas] = useState([]) 
-  const [insumosBodega, setInsumosBodega] = useState([]) 
-
-  // Estados UI
-  const [modoInventario, setModoInventario] = useState(false)
-  const [modoSectores, setModoSectores] = useState(false) 
   
-  // Items de compra
-  const [itemsCompra, setItemsCompra] = useState([]) 
-  const [itemTemp, setItemTemp] = useState({ insumo_id: '', cantidad: '', precio_unitario: '' })
+  // Estados UI
+  const [modoSectores, setModoSectores] = useState(false) 
+  const [alertaInsumos, setAlertaInsumos] = useState(false) // Para avisar que vaya a bodega
 
   // Formulario
   const [form, setForm] = useState({
     fecha: new Date().toISOString().split('T')[0],
+    clase_contable: 'OPEX',
     descripcion: '',
     monto: '',
     categoria_id: '',
@@ -102,60 +154,80 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
     nro_documento: '',
     estado_pago: 'Pendiente', 
     sectores_ids: [],
-    labor_origen_id: null // Mantener referencia si existe
+    labor_origen_id: null 
   })
+
+  // Distribución
+  const [metodoDistribucion, setMetodoDistribucion] = useState('Superficie')
 
   // Cuotas
   const [cuotas, setCuotas] = useState([])
 
   useEffect(() => { cargarMaestros() }, [])
 
-  // Filtrar Subcategorías cuando cambia Categoría
+  // 1. FILTRO SUBCATEGORÍAS Y ALERTA DE BODEGA
   useEffect(() => {
       if(form.categoria_id) {
           const filtradas = subcategorias.filter(s => s.categoria_id.toString() === form.categoria_id.toString())
           setSubcategoriasFiltradas(filtradas)
+
+          // Detectar si seleccionó algo que debería ir por Bodega
+          const catObj = categorias.find(c => c.id.toString() === form.categoria_id.toString())
+          if (catObj) {
+              const nombre = catObj.nombre.toLowerCase()
+              // Si suena a insumo tangible, mostramos alerta
+              if (nombre.includes('insumo') || nombre.includes('material') || nombre.includes('fertilizante') || nombre.includes('agro')) {
+                  setAlertaInsumos(true)
+              } else {
+                  setAlertaInsumos(false)
+              }
+          }
       } else {
           setSubcategoriasFiltradas([])
+          setAlertaInsumos(false)
       }
-  }, [form.categoria_id, subcategorias])
+  }, [form.categoria_id, subcategorias, categorias])
 
-  // Auto-cálculo de total si es inventario
+  // 2. SINCRONIZACIÓN CUOTA POR DEFECTO
   useEffect(() => {
-    if (modoInventario) {
-        const total = itemsCompra.reduce((acc, item) => acc + (item.subtotal || 0), 0)
-        setForm(prev => ({ ...prev, monto: total }))
-    }
-  }, [itemsCompra, modoInventario])
+      if (cuotas.length === 1) {
+          const nuevaMonto = form.monto || ''
+          if (cuotas[0].monto !== nuevaMonto) {
+              const updatedCuotas = [...cuotas]
+              updatedCuotas[0].monto = nuevaMonto
+              setCuotas(updatedCuotas)
+          }
+      }
+  }, [form.monto])
 
   async function cargarMaestros() {
-    const [cat, sub, prov, soc, parc, bod] = await Promise.all([
+    const [cat, sub, prov, soc, parc] = await Promise.all([
         supabase.from('categorias_gastos').select('*').order('nombre'),
         supabase.from('subcategorias_gastos').select('*').order('nombre'), 
         supabase.from('proveedores').select('*').eq('activo', true).order('nombre'),
         supabase.from('socios').select('*').eq('activo', true).order('nombre'),
-        supabase.from('parcelas').select('*, sectores(*)').eq('activo', true).order('nombre'),
-        supabase.from('bodega_insumos').select('id, nombre, unidad_medida').eq('activo', true).order('nombre')
+        supabase.from('parcelas').select('*, sectores(*)').eq('activo', true).order('nombre')
     ])
     setCategorias(cat.data || [])
     setSubcategorias(sub.data || [])
     setProveedores(prov.data || [])
     setSocios(soc.data || [])
     setParcelas(parc.data || [])
-    setInsumosBodega(bod.data || [])
 
     if (idGasto) {
+        // Carga de Gasto
         const { data } = await supabase.from('gastos').select('*, pagos_gastos(*)').eq('id', idGasto).single()
         if (data) {
             setForm({
                 ...data,
                 subcategoria_id: data.subcategoria_id || '',
                 proveedor_id: data.proveedor_id || '',
-                labor_origen_id: data.labor_origen_id // Importante cargar esto
+                nro_documento: data.nro_documento || '', 
+                labor_origen_id: data.labor_origen_id 
             })
             setCuotas(data.pagos_gastos || [])
             if (data.sectores_ids?.length > 0) setModoSectores(true)
-            if (data.descripcion && data.descripcion.includes('Compra Gasto')) setModoInventario(false) 
+            if (data.metodo_distribucion) setMetodoDistribucion(data.metodo_distribucion)
         }
     } else {
         setCuotas([{ 
@@ -181,6 +253,7 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
   }
 
   const agregarCuota = () => {
+      // Al agregar manualmente, se rompe la sincronización automática
       setCuotas([...cuotas, {
           fecha_vencimiento: form.fecha, 
           monto: '', 
@@ -201,36 +274,33 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
     
     setLoading(true)
     try {
-        // --- 1. CONSTRUCCIÓN LIMPIA DEL PAYLOAD ---
-        // En lugar de copiar 'form' y borrar, creamos uno nuevo solo con lo que existe en DB.
         const todasPagadas = cuotas.every(c => c.estado === 'Pagado')
         const ningunaPagada = cuotas.every(c => c.estado === 'Pendiente')
         
         const cleanPayload = {
             fecha: form.fecha,
+            clase_contable: form.clase_contable,
             descripcion: form.descripcion,
             monto: form.monto,
             categoria_id: form.categoria_id,
-            // Convertir strings vacíos a null para llaves foráneas
             subcategoria_id: form.subcategoria_id || null,
             proveedor_id: form.proveedor_id || null,
-            labor_origen_id: form.labor_origen_id || null, // Mantiene el link si viene de labor
-            
+            labor_origen_id: form.labor_origen_id || null,
             tipo_documento: form.tipo_documento,
-            nro_documento: form.nro_documento,
+            nro_documento: form.nro_documento || null, 
             sectores_ids: modoSectores ? form.sectores_ids : [],
-            
+            metodo_distribucion: modoSectores ? metodoDistribucion : null,
             estado_pago: todasPagadas ? 'Pagado' : (ningunaPagada ? 'Pendiente' : 'Parcial')
         }
 
-        // Si es edición, agregamos el ID, si no dejamos que Supabase lo genere
         if (idGasto) cleanPayload.id = idGasto
 
+        // 1. Guardar Gasto (Header)
         const { data, error } = await supabase.from('gastos').upsert([cleanPayload]).select()
         if (error) throw error
         const gId = data[0].id
 
-        // Guardar Cuotas
+        // 2. Guardar Cuotas (Limpiar y Reinsertar)
         await supabase.from('pagos_gastos').delete().eq('gasto_id', gId)
         
         const cuotasPayload = cuotas.map(c => ({
@@ -241,21 +311,42 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
             pagado_por_socio_id: c.pagado_por_socio_id || null, 
             estado: c.estado
         }))
-        
         await supabase.from('pagos_gastos').insert(cuotasPayload)
 
-        // Movimientos Bodega (Solo al crear)
-        if (!idGasto && modoInventario) {
-            const movs = itemsCompra.map(i => ({ 
-                insumo_id: i.insumo_id, 
-                tipo_movimiento: 'Entrada', 
-                cantidad: i.cantidad, 
-                costo_unitario: i.precio_unitario, 
-                fecha: form.fecha, 
-                referencia: `Compra Gasto #${gId}` 
-            }))
-            await supabase.from('bodega_movimientos').insert(movs)
+        // 3. Guardar Distribución Contable (Limpiar y Reinsertar)
+        await supabase.from('gasto_distribucion').delete().eq('gasto_id', gId)
+        
+        if (modoSectores && form.sectores_ids.length > 0) {
+            const itemsDistribucion = calcularDistribucionExacta(
+                totalGasto, 
+                form.sectores_ids, 
+                parcelas, 
+                metodoDistribucion
+            ).map(item => ({
+                ...item,
+                gasto_id: gId
+            }));
+
+            if (itemsDistribucion.length > 0) {
+                await supabase.from('gasto_distribucion').insert(itemsDistribucion)
+            }
         }
+
+        // 4. Sincronización Billetera Socios (Aportes/Pagos)
+        await supabase.from('movimientos_billetera').delete().ilike('descripcion', `%[GID:${gId}]`) 
+
+        const pagosSocios = cuotas.filter(c => c.estado === 'Pagado' && c.pagado_por_socio_id)
+        if (pagosSocios.length > 0) {
+            const movsBilletera = pagosSocios.map(c => ({
+                socio_id: c.pagado_por_socio_id,
+                tipo: 'Aporte', 
+                monto: c.monto,
+                fecha: c.fecha_vencimiento,
+                descripcion: `Pago Gasto: ${form.descripcion} [GID:${gId}]` 
+            }))
+            await supabase.from('movimientos_billetera').insert(movsBilletera)
+        }
+
         alGuardar()
     } catch (err) { alert(err.message) }
     setLoading(false)
@@ -292,7 +383,43 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
                         <FileText size={18}/> Detalle del Gasto
                     </div>
                     
+                    {/* Alerta de UX para Insumos */}
+                    {alertaInsumos && (
+                        <div style={{backgroundColor:'#fefce8', border:'1px solid #fef08a', padding:10, borderRadius:8, marginBottom:15, fontSize:'0.85rem', color:'#854d0e', display:'flex', gap:10, alignItems:'start'}}>
+                            <AlertCircle size={18} style={{marginTop:2}}/>
+                            <div>
+                                <strong>¿Es una compra de Insumos?</strong>
+                                <div style={{marginTop:2}}>
+                                    Para registrar stock (fertilizantes, materiales) utiliza el módulo <strong>Bodega &gt; Nueva Compra</strong>.
+                                    Aquí solo se registra el valor financiero.
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div style={{marginBottom:12}}>
+                        <label style={styles.label}>Clase Contable (Destino Financiero)</label>
+                        <div style={{display:'flex', gap:10}}>
+                            {['OPEX', 'CAPEX'].map(tipo => (
+                                <div 
+                                    key={tipo}
+                                    onClick={() => { setForm({...form, clase_contable: tipo}); setHasChanges(true) }}
+                                    style={{
+                                        padding:'8px 16px', borderRadius:8, cursor:'pointer', fontWeight:'bold', fontSize:'0.85rem',
+                                        border: form.clase_contable === tipo ? '2px solid #2563eb' : '1px solid #d1d5db',
+                                        backgroundColor: form.clase_contable === tipo ? '#eff6ff' : 'white',
+                                        color: form.clase_contable === tipo ? '#1e40af' : '#6b7280'
+                                    }}
+                                >
+                                    {tipo === 'OPEX' ? '📉 Gasto Operacional' : '🏗️ Inversión (Activo)'}
+                                </div>
+                            ))}
+                        </div>
+                    </div>                                
+
                     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12}}>
+
+                        
                         <div>
                             <label style={styles.label}>Fecha</label>
                             <input type="date" value={form.fecha} onChange={e => {setForm({...form, fecha: e.target.value}); setHasChanges(true)}} style={styles.input} required/>
@@ -303,10 +430,11 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
                                 <select style={{...styles.input, width: '90px'}} value={form.tipo_documento} onChange={e => {setForm({...form, tipo_documento: e.target.value}); setHasChanges(true)}}>
                                     <option>Factura</option><option>Boleta</option><option>Guía</option><option>Interno</option>
                                 </select>
-                                <input type="text" placeholder="12345" value={form.nro_documento} onChange={e => {setForm({...form, nro_documento: e.target.value}); setHasChanges(true)}} style={{...styles.input, flex:1}}/>
+                                <input type="text" placeholder="12345" value={form.nro_documento || ''} onChange={e => {setForm({...form, nro_documento: e.target.value}); setHasChanges(true)}} style={{...styles.input, flex:1}}/>
                              </div>
                         </div>
                     </div>
+
 
                     <div style={{marginBottom:12}}>
                         <label style={styles.label}>Proveedor</label>
@@ -316,15 +444,13 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
                         </select>
                     </div>
 
-                    {/* GRID CATEGORÍA Y SUBCATEGORÍA */}
                     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12}}>
                          <div>
-                            <label style={styles.label}>Categoría</label>
+                             <label style={styles.label}>Categoría</label>
                             <select 
                                 value={form.categoria_id} 
                                 onChange={e => {
-                                    setForm({...form, categoria_id: e.target.value, subcategoria_id: ''}); 
-                                    setHasChanges(true)
+                                    setForm({...form, categoria_id: e.target.value, subcategoria_id: ''}); setHasChanges(true)
                                 }} 
                                 style={styles.input} 
                                 required
@@ -347,51 +473,40 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
                          </div>
                     </div>
 
+
+
                     <div style={{marginBottom:12}}>
                          <label style={styles.label}>Descripción</label>
-                         <input type="text" placeholder="Ej: Compra fertilizantes..." value={form.descripcion} onChange={e => {setForm({...form, descripcion: e.target.value}); setHasChanges(true)}} style={styles.input} required/>
+                         <input type="text" placeholder="Ej: Pago servicios contables..." value={form.descripcion} onChange={e => {setForm({...form, descripcion: e.target.value}); setHasChanges(true)}} style={styles.input} required/>
                     </div>
-
-                    {!idGasto && (
-                        <div style={{marginTop: 5, paddingTop:10, borderTop:'1px solid #f3f4f6'}}>
-                            <div style={{display:'flex', alignItems:'center', gap:8}}>
-                                <input type="checkbox" id="chkInv" checked={modoInventario} onChange={e => setModoInventario(e.target.checked)} style={{width:16, height:16, cursor:'pointer'}}/>
-                                <label htmlFor="chkInv" style={{fontSize:'0.9rem', fontWeight:'600', color:'#0369a1', cursor:'pointer', display:'flex', alignItems:'center', gap:6}}>
-                                    <ShoppingCart size={16}/> Ingresar items a Bodega
-                                </label>
-                            </div>
-                        </div>
-                    )}
                 </div>
-
-                {modoInventario && (
-                    <div style={{...styles.card, backgroundColor:'#f0f9ff', border:'1px solid #bae6fd'}}>
-                         <div style={{display:'flex', gap:8, marginBottom:8}}>
-                            <select style={{...styles.input, flex:2}} value={itemTemp.insumo_id} onChange={e => setItemTemp({...itemTemp, insumo_id: e.target.value})}>
-                                <option value="">Insumo...</option>
-                                {insumosBodega.map(i => <option key={i.id} value={i.id}>{i.nombre}</option>)}
-                            </select>
-                            <input type="number" placeholder="Cant" style={{...styles.input, flex:0.8}} value={itemTemp.cantidad} onChange={e => setItemTemp({...itemTemp, cantidad: e.target.value})}/>
-                            <input type="number" placeholder="$ Unit" style={{...styles.input, flex:1}} value={itemTemp.precio_unitario} onChange={e => setItemTemp({...itemTemp, precio_unitario: e.target.value})}/>
-                            <button type="button" onClick={() => {if(itemTemp.insumo_id){setItemsCompra([...itemsCompra, {...itemTemp, subtotal: itemTemp.cantidad * itemTemp.precio_unitario, nombre: insumosBodega.find(i=>i.id==itemTemp.insumo_id).nombre}]); setItemTemp({insumo_id:'', cantidad:'', precio_unitario:''})}}} style={{backgroundColor:'#0284c7', color:'white', border:'none', borderRadius:6, padding:'0 10px'}}><Plus size={18}/></button>
-                        </div>
-                        <div style={{maxHeight:120, overflowY:'auto'}}>
-                            {itemsCompra.map((it, i) => (
-                                <div key={i} style={{fontSize:'0.8rem', display:'flex', justifyContent:'space-between', borderBottom:'1px solid #e0f2fe', padding:'4px 0', color:'#0c4a6e'}}>
-                                    <span>{it.nombre} x {it.cantidad}</span>
-                                    <strong>$ {parseInt(it.subtotal).toLocaleString()}</strong>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
 
                 <div style={styles.card}>
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
                         <div style={{fontWeight:'bold', fontSize:'0.9rem', display:'flex', alignItems:'center', gap:6}}>
-                            <Map size={18}/> Imputar a Sectores
+                             <Map size={18}/> Imputar a Sectores
                         </div>
                         <div style={{display:'flex', alignItems:'center', gap:5}}>
+                            {modoSectores && (
+                                <select 
+                                    value={metodoDistribucion}
+                                    onChange={(e) => setMetodoDistribucion(e.target.value)}
+                                    style={{
+                                        fontSize:'0.75rem', 
+                                        padding:'2px 6px', 
+                                        border:'1px solid #d1d5db', 
+                                        borderRadius:4, 
+                                        color:'#4b5563',
+                                        marginRight: 5,
+                                        outline: 'none',
+                                        backgroundColor: '#f9fafb'
+                                    }}
+                                >
+                                    <option value="Superficie">x Ha</option>
+                                    <option value="Arboles">x Árbol</option>
+                                    <option value="Equitativo">Equitativo</option>
+                                </select>
+                            )}
                             <span style={{fontSize:'0.75rem', color:'#6b7280'}}>¿Aplica a campo?</span>
                             <input type="checkbox" checked={modoSectores} onChange={e => setModoSectores(e.target.checked)} style={{width:16, height:16, cursor:'pointer'}}/>
                         </div>
@@ -408,7 +523,7 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
                                                 onClick={() => {setForm({...form, sectores_ids: form.sectores_ids.includes(s.id)?form.sectores_ids.filter(x=>x!==s.id):[...form.sectores_ids, s.id]}); setHasChanges(true)}} 
                                                 style={styles.chip(form.sectores_ids.includes(s.id))}
                                             >
-                                                {s.nombre}
+                                                 {s.nombre}
                                             </div>
                                         ))}
                                     </div>
@@ -421,12 +536,12 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
 
             {/* Panel Derecho */}
             <div style={styles.rightPanel}>
-                <BigMoneyInput value={form.monto} readOnly={modoInventario} onChange={v => {setForm({...form, monto: v}); setHasChanges(true)}} autoFocus={!modoInventario}/>
+                <BigMoneyInput value={form.monto} onChange={v => {setForm({...form, monto: v}); setHasChanges(true)}} autoFocus/>
 
                 <div style={styles.paymentCard}>
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:15, paddingBottom:10, borderBottom:'1px solid #e2e8f0'}}>
                         <div style={{fontWeight:'bold', fontSize:'1rem', color:'#0f172a', display:'flex', alignItems:'center', gap:8}}>
-                            <Wallet size={18}/> Plan de Pagos
+                             <Wallet size={18}/> Plan de Pagos
                         </div>
                         <button type="button" onClick={agregarCuota} style={{backgroundColor:'#166534', color:'white', border:'none', borderRadius:6, padding:'6px 12px', fontSize:'0.8rem', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:5}}>
                             <Plus size={14}/> Agregar Cuota
@@ -438,7 +553,7 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
                             <div key={i} style={styles.cuotaItem}>
                                 <div style={styles.cuotaRowTop}>
                                     <div style={{flex:1, marginRight:10}}>
-                                        <label style={{fontSize:'0.7rem', color:'#6b7280', display:'block', marginBottom:2}}>Vencimiento</label>
+                                         <label style={{fontSize:'0.7rem', color:'#6b7280', display:'block', marginBottom:2}}>Vencimiento</label>
                                         <input type="date" value={c.fecha_vencimiento} onChange={e => updateCuota(i, 'fecha_vencimiento', e.target.value)} style={styles.inputCuota}/>
                                     </div>
                                     <div style={{flex:1}}>

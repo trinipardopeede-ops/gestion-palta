@@ -333,4 +333,4 @@ function Labores() {
   )
 }
 
-export default Labores
+export default Labores 
