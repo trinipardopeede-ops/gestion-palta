@@ -61,10 +61,11 @@ function Cosechas() {
         }
     } catch (err) {
         console.error("Error al leer cosechas:", err.message)
+        alert('No se pudieron cargar las cosechas. Verifica tu conexión.')  // ← solo agregar esto
     } finally {
         setLoading(false)
     }
-  }
+}
 
   // Lógica de Ordenamiento y Agrupación
   const procesarDatos = () => {
@@ -118,10 +119,14 @@ function Cosechas() {
 
   const eliminar = async (id) => {
     if (confirm("¿Eliminar este registro de cosecha y sus detalles?")) {
-      await supabase.from('cosechas').delete().eq('id', id)
-      leerCosechas()
+        const { error } = await supabase.from('cosechas').delete().eq('id', id)
+        if (error) {
+            alert('Error al eliminar: ' + error.message)
+            return
+        }
+        leerCosechas()
     }
-  }
+}
 
   const getFechaParts = (fechaString) => {
       if (!fechaString) return { dia: '-', mes: '-', ano: '-' }

@@ -66,38 +66,41 @@ function Labores() {
 
   async function cargarDatos() {
     setLoading(true)
-    
-    // 1. Cargar Maestros
-    const { data: parc } = await supabase.from('parcelas').select('id, nombre').eq('activo', true).order('nombre')
-    const { data: sect } = await supabase.from('sectores').select('id, nombre, parcela_id').eq('activo', true).order('nombre')
-    const { data: prov } = await supabase.from('proveedores').select('id, nombre').eq('activo', true).order('nombre')
-    
+
+    const { data: parc, error: errParc } = await supabase.from('parcelas').select('id, nombre').eq('activo', true).order('nombre')
+    if (errParc) { alert('Error cargando parcelas.'); setLoading(false); return }
+
+    const { data: sect, error: errSect } = await supabase.from('sectores').select('id, nombre, parcela_id').eq('activo', true).order('nombre')
+    if (errSect) { alert('Error cargando sectores.'); setLoading(false); return }
+
+    const { data: prov, error: errProv } = await supabase.from('proveedores').select('id, nombre').eq('activo', true).order('nombre')
+    if (errProv) { alert('Error cargando proveedores.'); setLoading(false); return }
+
     setListaParcelas(parc || [])
     setListaSectores(sect || [])
     setListaProveedores(prov || [])
 
-    // Mapas
     const mapSec = {}; (sect || []).forEach(s => mapSec[s.id] = s)
     setMapaSectores(mapSec)
     const mapPar = {}; (parc || []).forEach(p => mapPar[p.id] = p.nombre)
     setMapaParcelas(mapPar)
 
-    // 2. Cargar Labores
     const { data, error } = await supabase
         .from('labores')
         .select(`*, proveedores ( nombre )`)
         .order('fecha', { ascending: false })
-    
-    if (error) console.error("Error al cargar:", error)
-    else {
+
+    if (error) {
+        console.error('Error al cargar labores:', error.message)
+        alert('No se pudieron cargar las labores.')
+    } else {
         setLabores(data || [])
-        // Extraer años únicos para el filtro
         const years = [...new Set((data || []).map(l => l.fecha.substring(0, 4)))].sort((a,b) => b - a)
         setAniosDisponibles(years)
     }
 
     setLoading(false)
-  }
+}
 
   const eliminar = async (id) => {
       if(confirm("¿Eliminar esta labor?")) {

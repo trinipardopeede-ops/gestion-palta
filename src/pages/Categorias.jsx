@@ -15,12 +15,24 @@ function Categorias() {
     cargarDatos()
   }, [])
 
-  async function cargarDatos() {
-    const { data: cats } = await supabase.from('categorias_gastos').select('*').order('nombre')
-    const { data: subs } = await supabase.from('subcategorias_gastos').select('*').order('nombre')
+async function cargarDatos() {
+    const { data: cats, error: errorCats } = await supabase.from('categorias_gastos').select('*').order('nombre')
+    if (errorCats) {
+        console.error('Error cargando categorías:', errorCats.message)
+        alert('No se pudieron cargar las categorías.')
+        return
+    }
+
+    const { data: subs, error: errorSubs } = await supabase.from('subcategorias_gastos').select('*').order('nombre')
+    if (errorSubs) {
+        console.error('Error cargando subcategorías:', errorSubs.message)
+        alert('No se pudieron cargar las subcategorías.')
+        return
+    }
+
     setCategorias(cats || [])
     setSubcategorias(subs || [])
-  }
+}
 
   // --- ACCIONES CATEGORIAS ---
   const crearCategoria = async (e) => {

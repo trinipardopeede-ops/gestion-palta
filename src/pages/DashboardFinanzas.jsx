@@ -67,6 +67,8 @@ export default function DashboardFinanzas() {
 
     } catch (error) {
       console.error("Error cargando finanzas:", error);
+      alert('No se pudieron cargar los datos financieros.');
+
     } finally {
       setLoading(false);
     }

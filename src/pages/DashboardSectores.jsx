@@ -40,26 +40,23 @@ function DashboardSectores() {
   async function cargarDatos() {
     setLoading(true)
     try {
-        // 1. Cargar Base
-        const { data: parcelas } = await supabase.from('parcelas').select('*').eq('activo', true).order('nombre')
-        const { data: sectores } = await supabase.from('sectores').select('*').eq('activo', true).order('nombre')
+        const { data: parcelas, error: errParc } = await supabase.from('parcelas').select('*').eq('activo', true).order('nombre')
+        if (errParc) throw errParc
+
+        const { data: sectores, error: errSect } = await supabase.from('sectores').select('*').eq('activo', true).order('nombre')
+        if (errSect) throw errSect
+
         const { data: riegosActivos } = await supabase.from('programas_riego').select('*').neq('estado', 'Finalizado')
         const { data: ultimasLabores } = await supabase.from('labores_campo').select('*').order('fecha', { ascending: false }).limit(200)
 
         if (parcelas && sectores) {
-            // 2. Construir Estructura Jerárquica
             const estructura = parcelas.map(p => {
-                // Filtrar sectores de esta parcela
                 const misSectores = sectores.filter(s => s.parcela_id === p.id).map(sector => {
-                    // --- CÁLCULOS DINÁMICOS POR SECTOR ---
-                    
-                    // A. Riego Activo y Estimado
                     const programa = riegosActivos?.find(r => {
                         const sId = Number(sector.id)
                         if (r.sectores_ids && Array.isArray(r.sectores_ids)) return r.sectores_ids.map(Number).includes(sId)
                         return Number(r.sector_id) === sId
                     })
-
                     let aguaSemanal = 0
                     if (programa) {
                         const minutosDia = (programa.turnos || []).reduce((acc, t) => acc + (parseInt(t.duracion)||0), 0)
@@ -67,50 +64,29 @@ function DashboardSectores() {
                         const caudalSector = ((parseFloat(sector.cantidad_aspersores)||0) * (parseFloat(sector.caudal_lph)||0))
                         aguaSemanal = (minutosDia / 60) * diasSemana * caudalSector
                     }
-
-                    // B. Labores Recientes
                     const misLabores = ultimasLabores?.filter(l => {
                         const sId = Number(sector.id)
                         if (l.sectores_ids && Array.isArray(l.sectores_ids)) return l.sectores_ids.map(Number).includes(sId)
                         return Number(l.sector_id) === sId
                     }).slice(0, 3)
-
-                    // C. Ratios Estáticos
                     const ratio = sector.cantidad_arboles > 0 ? (sector.cantidad_aspersores / sector.cantidad_arboles).toFixed(1) : '0'
-
-                    return {
-                        ...sector,
-                        riegoActivo: !!programa,
-                        aguaSemanal,
-                        misLabores: misLabores || [],
-                        ratioAspersores: ratio
-                    }
+                    return { ...sector, riegoActivo: !!programa, aguaSemanal, misLabores: misLabores || [], ratioAspersores: ratio }
                 })
-
-                // --- TOTALES DE LA PARCELA ---
                 const totalArboles = misSectores.reduce((acc, s) => acc + (s.cantidad_arboles || 0), 0)
                 const totalHa = misSectores.reduce((acc, s) => acc + (s.superficie_ha || 0), 0)
                 const totalAspersores = misSectores.reduce((acc, s) => acc + (s.cantidad_aspersores || 0), 0)
-                
-                // Caudal Total (L/h de todos los sectores sumados) -> Convertido a m3/h
                 const totalCaudalLPH = misSectores.reduce((acc, s) => acc + ((s.cantidad_aspersores || 0) * (s.caudal_lph || 0)), 0)
-                const totalCaudalM3 = totalCaudalLPH / 1000
-
-                return {
-                    ...p,
-                    sectores: misSectores,
-                    stats: { 
-                        arboles: totalArboles, 
-                        has: totalHa,
-                        aspersores: totalAspersores,
-                        caudalM3: totalCaudalM3
-                    }
-                }
+                return { ...p, sectores: misSectores, stats: { arboles: totalArboles, has: totalHa, aspersores: totalAspersores, caudalM3: totalCaudalLPH / 1000 } }
             })
             setDataParcelas(estructura)
         }
-    } catch (err) { console.error(err) } finally { setLoading(false) }
-  }
+    } catch (err) {
+        console.error('Error en DashboardSectores:', err.message)
+        alert('No se pudo cargar el estado del campo.')
+    } finally {
+        setLoading(false)
+    }
+}
 
   // Listas para filtros
   const parcelasOptions = useMemo(() => dataParcelas.map(p => p.nombre).sort(), [dataParcelas])

@@ -65,6 +65,8 @@ function ConfiguracionCampo() {
       }
     } catch (error) {
       console.error(error)
+      alert('Error cargando la configuración del campo.')
+
     } finally {
       setLoading(false)
     }

@@ -17,14 +17,18 @@ function Clientes() {
   }, [])
 
   async function cargarClientes() {
-    // FILTRO: Solo cargamos los activos
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('clientes')
         .select('*')
-        .eq('activo', true) 
+        .eq('activo', true)
         .order('nombre')
+    if (error) {
+        console.error('Error cargando clientes:', error.message)
+        alert('No se pudieron cargar los clientes.')
+        return
+    }
     setClientes(data || [])
-  }
+}
 
   const handleSort = (key) => {
     setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }))

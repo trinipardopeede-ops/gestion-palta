@@ -20,14 +20,20 @@ function Bitacora() {
 
   async function cargarNotas() {
     setLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('bitacora')
         .select('*')
         .eq('activo', true)
         .order('created_at', { ascending: false })
+    if (error) {
+        console.error('Error cargando bitácora:', error.message)
+        alert('No se pudieron cargar las notas.')
+        setLoading(false)
+        return
+    }
     setNotas(data || [])
     setLoading(false)
-  }
+}
 
   const toggleArchivar = async (id, estadoActual, e) => {
       e.stopPropagation()

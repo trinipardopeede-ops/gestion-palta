@@ -326,10 +326,19 @@ function CuentasSocios() {
     statLabel: { fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase' },
     cardActions: { padding: '15px', display: 'flex', gap: '10px', borderTop: '1px solid #f3f4f6' },
     btnAction: (tipo) => ({
-        flex: 1, padding: '8px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-        backgroundColor: tipo === 'Aporte' ? '#f0fdf4' : '#fef2f2',
-        color: tipo === 'Aporte' ? '#166534' : '#991b1b',
-        border: `1px solid ${tipo === 'Aporte' ? '#bbf7d0' : '#fecaca'}`
+    flex: 1, 
+    padding: '8px', 
+    borderRadius: '6px', 
+    cursor: 'pointer', 
+    fontWeight: 'bold', 
+    fontSize: '0.85rem', 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 5,
+    backgroundColor: tipo === 'Aporte' ? '#f0fdf4' : '#fef2f2',
+    color: tipo === 'Aporte' ? '#166534' : '#991b1b',
+    border: `1px solid ${tipo === 'Aporte' ? '#bbf7d0' : '#fecaca'}`
     }),
 
     tableContainer: { backgroundColor: 'white', borderRadius: '10px', border: '1px solid #e5e7eb', overflow: 'hidden' },

@@ -37,15 +37,17 @@ function Riego() {
   async function cargarDatos() {
     setLoading(true)
     try {
-        const { data: sectoresBD } = await supabase
+        const { data: sectoresBD, error: errSec } = await supabase
             .from('sectores')
             .select(`*, parcelas ( nombre )`)
             .order('nombre')
-        
-        const { data: programasActivos } = await supabase
+        if (errSec) throw errSec
+
+        const { data: programasActivos, error: errProg } = await supabase
             .from('programas_riego')
             .select('*')
             .neq('estado', 'Finalizado')
+        if (errProg) throw errProg
 
         const sectoresProcesados = sectoresBD.map(s => {
             const miPrograma = programasActivos?.find(p => {
@@ -53,11 +55,9 @@ function Riego() {
                  if (p.sectores_ids && Array.isArray(p.sectores_ids) && p.sectores_ids.includes(s.id)) return true;
                  return false;
             })
-
             const caudalAspersor = s.caudal_lph || 0
             const numAspersores = s.cantidad_aspersores || 0
             const caudalTotalLph = caudalAspersor * numAspersores
-            
             let litrosSemana = 0
             if (miPrograma && miPrograma.turnos && caudalTotalLph > 0) {
                 let minutosSemana = 0
@@ -66,7 +66,6 @@ function Riego() {
                 misTurnos.forEach(t => { minutosSemana += (parseInt(t.duracion) || 0) * dias })
                 litrosSemana = (caudalTotalLph / 60) * minutosSemana
             }
-
             return { ...s, programa: miPrograma, caudalTotalLph, litrosSemana }
         })
 
@@ -78,25 +77,32 @@ function Riego() {
         }, {})
 
         setSectoresAgrupados(agrupados)
-    } catch (err) { console.error(err) } finally { setLoading(false) }
-  }
+    } catch (err) {
+        console.error('Error en Riego:', err.message)
+        alert('No se pudo cargar la información de riego.')
+    } finally {
+        setLoading(false)
+    }
+}
 
   async function cargarHistorial() {
-      let query = supabase
-          .from('programas_riego')
-          .select(`*, sectores ( nombre, caudal_lph, cantidad_aspersores, parcelas (nombre) )`)
-          .eq('estado', 'Finalizado')
-      
-      if (anioFiltro) {
-          const inicioAnio = `${anioFiltro}-01-01`
-          const finAnio = `${anioFiltro}-12-31`
-          query = query.gte('fecha_creacion', inicioAnio).lte('fecha_creacion', finAnio)
-      }
+    let query = supabase
+        .from('programas_riego')
+        .select(`*, sectores ( nombre, caudal_lph, cantidad_aspersores, parcelas (nombre) )`)
+        .eq('estado', 'Finalizado')
 
-      const { data, error } = await query
-      if (error) console.error(error)
-      else setHistorialProgramas(data)
-  }
+    if (anioFiltro) {
+        query = query.gte('fecha_creacion', `${anioFiltro}-01-01`).lte('fecha_creacion', `${anioFiltro}-12-31`)
+    }
+
+    const { data, error } = await query
+    if (error) {
+        console.error('Error cargando historial:', error.message)
+        alert('No se pudo cargar el historial de riego.')
+    } else {
+        setHistorialProgramas(data)
+    }
+}
 
   const handleSort = (campo) => {
       const isAsc = orden.campo === campo ? !orden.asc : true
