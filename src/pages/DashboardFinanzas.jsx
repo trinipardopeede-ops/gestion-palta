@@ -85,10 +85,10 @@ export default function DashboardFinanzas() {
       }
 
       const total = filtrados.reduce((acc, g) => acc + (parseFloat(g.monto) || 0), 0);
-      const pendiente = filtrados
-          .filter(g => g.estado_pago === 'Pendiente' || g.estado_pago === 'Parcial')
+      const pagado = filtrados
+          .filter(g => g.estado_pago === 'Pagado')
           .reduce((acc, g) => acc + (parseFloat(g.monto) || 0), 0);
-      const pagado = total - pendiente; 
+      const pendiente = total - pagado;
 
       setKpis({ gastosTotales: total, deudaPendiente: pendiente, pagadoReal: pagado });
 

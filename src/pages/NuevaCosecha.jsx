@@ -156,7 +156,7 @@ function NuevaCosecha({ idCosecha, cerrarModal, alGuardar }) {
               ...formData,
               sector_id: formData.sector_id || null,
               cliente_id: formData.cliente_id || null,
-              oferta_id: undefined,
+              oferta_id: formData.oferta_id || null,
               kilos: totalKilos,
               precio_kilo: precioPromedio
           }
@@ -171,7 +171,7 @@ function NuevaCosecha({ idCosecha, cerrarModal, alGuardar }) {
               finalId = data.id
           }
 
-          const lineasGuardar = detalles.filter(d => d.kilos || d.precio_kilo).map(d => ({
+          const lineasGuardar = detalles.filter(d => parseFloat(d.kilos) > 0).map(d => ({
               cosecha_id: finalId,
               calibre: d.calibre || 'Sin Calibre',
               kilos: parseFloat(d.kilos) || 0,

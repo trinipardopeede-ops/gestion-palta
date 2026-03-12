@@ -60,7 +60,9 @@ function Modal({ isOpen, onClose, title, children }) {
     },
     content: {
       padding: '20px',
-      overflowY: 'auto' 
+      overflowY: 'auto',
+      flex: 1,
+      minHeight: 0
     }
   }
 

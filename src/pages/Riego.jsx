@@ -330,8 +330,8 @@ function Riego() {
                             </div>
 
                             <div>
-                                <span style={{fontSize:'0.75rem', display:'block'}}>In: {new Date(prog.fecha_inicio).toLocaleDateString()}</span>
-                                <span style={{fontSize:'0.75rem', display:'block'}}>Out: {new Date(prog.fecha_fin).toLocaleDateString()}</span>
+                                <span style={{fontSize:'0.75rem', display:'block'}}>In: {prog.fecha_inicio ? new Date(prog.fecha_inicio).toLocaleDateString() : '-'}</span>
+                                <span style={{fontSize:'0.75rem', display:'block'}}>Out: {prog.fecha_fin ? new Date(prog.fecha_fin).toLocaleDateString() : 'Activo'}</span>
                             </div>
                             
                             <div>

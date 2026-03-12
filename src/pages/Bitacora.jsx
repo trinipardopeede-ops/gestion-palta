@@ -18,6 +18,7 @@ function Bitacora() {
 
   useEffect(() => { cargarNotas() }, [])
 
+  // DESPUÉS
   async function cargarNotas() {
     setLoading(true)
     const { data, error } = await supabase

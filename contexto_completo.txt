@@ -478,10 +478,6 @@ RUTA: src\index.css
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -493,17 +489,16 @@ body {
   padding: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #f3f4f6; /* El gris suave de tu app */
-  color: #1f2937; /* Texto oscuro por defecto */
+  background-color: #f3f4f6;
+  color: #1f2937;
 }
 
-/* IMPORTANTE: Asegura que el contenedor de React ocupe todo el espacio */
 #root {
   width: 100%;
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  display: flex; /* Necesario para que tu layout funcione bien */
+  display: flex;
   flex-direction: column;
 }
 
@@ -766,16 +761,23 @@ function Bitacora() {
 
   useEffect(() => { cargarNotas() }, [])
 
+  // DESPUÉS
   async function cargarNotas() {
     setLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('bitacora')
         .select('*')
         .eq('activo', true)
         .order('created_at', { ascending: false })
+    if (error) {
+        console.error('Error cargando bitácora:', error.message)
+        alert('No se pudieron cargar las notas.')
+        setLoading(false)
+        return
+    }
     setNotas(data || [])
     setLoading(false)
-  }
+}
 
   const toggleArchivar = async (id, estadoActual, e) => {
       e.stopPropagation()
@@ -1361,12 +1363,24 @@ function Categorias() {
     cargarDatos()
   }, [])
 
-  async function cargarDatos() {
-    const { data: cats } = await supabase.from('categorias_gastos').select('*').order('nombre')
-    const { data: subs } = await supabase.from('subcategorias_gastos').select('*').order('nombre')
+async function cargarDatos() {
+    const { data: cats, error: errorCats } = await supabase.from('categorias_gastos').select('*').order('nombre')
+    if (errorCats) {
+        console.error('Error cargando categorías:', errorCats.message)
+        alert('No se pudieron cargar las categorías.')
+        return
+    }
+
+    const { data: subs, error: errorSubs } = await supabase.from('subcategorias_gastos').select('*').order('nombre')
+    if (errorSubs) {
+        console.error('Error cargando subcategorías:', errorSubs.message)
+        alert('No se pudieron cargar las subcategorías.')
+        return
+    }
+
     setCategorias(cats || [])
     setSubcategorias(subs || [])
-  }
+}
 
   // --- ACCIONES CATEGORIAS ---
   const crearCategoria = async (e) => {
@@ -1525,14 +1539,18 @@ function Clientes() {
   }, [])
 
   async function cargarClientes() {
-    // FILTRO: Solo cargamos los activos
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('clientes')
         .select('*')
-        .eq('activo', true) 
+        .eq('activo', true)
         .order('nombre')
+    if (error) {
+        console.error('Error cargando clientes:', error.message)
+        alert('No se pudieron cargar los clientes.')
+        return
+    }
     setClientes(data || [])
-  }
+}
 
   const handleSort = (key) => {
     setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }))
@@ -1737,6 +1755,8 @@ function ConfiguracionCampo() {
       }
     } catch (error) {
       console.error(error)
+      alert('Error cargando la configuración del campo.')
+
     } finally {
       setLoading(false)
     }
@@ -1977,10 +1997,11 @@ function Cosechas() {
         }
     } catch (err) {
         console.error("Error al leer cosechas:", err.message)
+        alert('No se pudieron cargar las cosechas. Verifica tu conexión.')  // ← solo agregar esto
     } finally {
         setLoading(false)
     }
-  }
+}
 
   // Lógica de Ordenamiento y Agrupación
   const procesarDatos = () => {
@@ -2034,10 +2055,14 @@ function Cosechas() {
 
   const eliminar = async (id) => {
     if (confirm("¿Eliminar este registro de cosecha y sus detalles?")) {
-      await supabase.from('cosechas').delete().eq('id', id)
-      leerCosechas()
+        const { error } = await supabase.from('cosechas').delete().eq('id', id)
+        if (error) {
+            alert('Error al eliminar: ' + error.message)
+            return
+        }
+        leerCosechas()
     }
-  }
+}
 
   const getFechaParts = (fechaString) => {
       if (!fechaString) return { dia: '-', mes: '-', ano: '-' }
@@ -3472,6 +3497,8 @@ export default function DashboardFinanzas() {
 
     } catch (error) {
       console.error("Error cargando finanzas:", error);
+      alert('No se pudieron cargar los datos financieros.');
+
     } finally {
       setLoading(false);
     }
@@ -3678,26 +3705,23 @@ function DashboardSectores() {
   async function cargarDatos() {
     setLoading(true)
     try {
-        // 1. Cargar Base
-        const { data: parcelas } = await supabase.from('parcelas').select('*').eq('activo', true).order('nombre')
-        const { data: sectores } = await supabase.from('sectores').select('*').eq('activo', true).order('nombre')
+        const { data: parcelas, error: errParc } = await supabase.from('parcelas').select('*').eq('activo', true).order('nombre')
+        if (errParc) throw errParc
+
+        const { data: sectores, error: errSect } = await supabase.from('sectores').select('*').eq('activo', true).order('nombre')
+        if (errSect) throw errSect
+
         const { data: riegosActivos } = await supabase.from('programas_riego').select('*').neq('estado', 'Finalizado')
         const { data: ultimasLabores } = await supabase.from('labores_campo').select('*').order('fecha', { ascending: false }).limit(200)
 
         if (parcelas && sectores) {
-            // 2. Construir Estructura Jerárquica
             const estructura = parcelas.map(p => {
-                // Filtrar sectores de esta parcela
                 const misSectores = sectores.filter(s => s.parcela_id === p.id).map(sector => {
-                    // --- CÁLCULOS DINÁMICOS POR SECTOR ---
-                    
-                    // A. Riego Activo y Estimado
                     const programa = riegosActivos?.find(r => {
                         const sId = Number(sector.id)
                         if (r.sectores_ids && Array.isArray(r.sectores_ids)) return r.sectores_ids.map(Number).includes(sId)
                         return Number(r.sector_id) === sId
                     })
-
                     let aguaSemanal = 0
                     if (programa) {
                         const minutosDia = (programa.turnos || []).reduce((acc, t) => acc + (parseInt(t.duracion)||0), 0)
@@ -3705,50 +3729,29 @@ function DashboardSectores() {
                         const caudalSector = ((parseFloat(sector.cantidad_aspersores)||0) * (parseFloat(sector.caudal_lph)||0))
                         aguaSemanal = (minutosDia / 60) * diasSemana * caudalSector
                     }
-
-                    // B. Labores Recientes
                     const misLabores = ultimasLabores?.filter(l => {
                         const sId = Number(sector.id)
                         if (l.sectores_ids && Array.isArray(l.sectores_ids)) return l.sectores_ids.map(Number).includes(sId)
                         return Number(l.sector_id) === sId
                     }).slice(0, 3)
-
-                    // C. Ratios Estáticos
                     const ratio = sector.cantidad_arboles > 0 ? (sector.cantidad_aspersores / sector.cantidad_arboles).toFixed(1) : '0'
-
-                    return {
-                        ...sector,
-                        riegoActivo: !!programa,
-                        aguaSemanal,
-                        misLabores: misLabores || [],
-                        ratioAspersores: ratio
-                    }
+                    return { ...sector, riegoActivo: !!programa, aguaSemanal, misLabores: misLabores || [], ratioAspersores: ratio }
                 })
-
-                // --- TOTALES DE LA PARCELA ---
                 const totalArboles = misSectores.reduce((acc, s) => acc + (s.cantidad_arboles || 0), 0)
                 const totalHa = misSectores.reduce((acc, s) => acc + (s.superficie_ha || 0), 0)
                 const totalAspersores = misSectores.reduce((acc, s) => acc + (s.cantidad_aspersores || 0), 0)
-                
-                // Caudal Total (L/h de todos los sectores sumados) -> Convertido a m3/h
                 const totalCaudalLPH = misSectores.reduce((acc, s) => acc + ((s.cantidad_aspersores || 0) * (s.caudal_lph || 0)), 0)
-                const totalCaudalM3 = totalCaudalLPH / 1000
-
-                return {
-                    ...p,
-                    sectores: misSectores,
-                    stats: { 
-                        arboles: totalArboles, 
-                        has: totalHa,
-                        aspersores: totalAspersores,
-                        caudalM3: totalCaudalM3
-                    }
-                }
+                return { ...p, sectores: misSectores, stats: { arboles: totalArboles, has: totalHa, aspersores: totalAspersores, caudalM3: totalCaudalLPH / 1000 } }
             })
             setDataParcelas(estructura)
         }
-    } catch (err) { console.error(err) } finally { setLoading(false) }
-  }
+    } catch (err) {
+        console.error('Error en DashboardSectores:', err.message)
+        alert('No se pudo cargar el estado del campo.')
+    } finally {
+        setLoading(false)
+    }
+}
 
   // Listas para filtros
   const parcelasOptions = useMemo(() => dataParcelas.map(p => p.nombre).sort(), [dataParcelas])
@@ -4708,45 +4711,53 @@ function Labores() {
 
   async function cargarDatos() {
     setLoading(true)
-    
-    // 1. Cargar Maestros
-    const { data: parc } = await supabase.from('parcelas').select('id, nombre').eq('activo', true).order('nombre')
-    const { data: sect } = await supabase.from('sectores').select('id, nombre, parcela_id').eq('activo', true).order('nombre')
-    const { data: prov } = await supabase.from('proveedores').select('id, nombre').eq('activo', true).order('nombre')
-    
+
+    const { data: parc, error: errParc } = await supabase.from('parcelas').select('id, nombre').eq('activo', true).order('nombre')
+    if (errParc) { alert('Error cargando parcelas.'); setLoading(false); return }
+
+    const { data: sect, error: errSect } = await supabase.from('sectores').select('id, nombre, parcela_id').eq('activo', true).order('nombre')
+    if (errSect) { alert('Error cargando sectores.'); setLoading(false); return }
+
+    const { data: prov, error: errProv } = await supabase.from('proveedores').select('id, nombre').eq('activo', true).order('nombre')
+    if (errProv) { alert('Error cargando proveedores.'); setLoading(false); return }
+
     setListaParcelas(parc || [])
     setListaSectores(sect || [])
     setListaProveedores(prov || [])
 
-    // Mapas
     const mapSec = {}; (sect || []).forEach(s => mapSec[s.id] = s)
     setMapaSectores(mapSec)
     const mapPar = {}; (parc || []).forEach(p => mapPar[p.id] = p.nombre)
     setMapaParcelas(mapPar)
 
-    // 2. Cargar Labores
     const { data, error } = await supabase
         .from('labores')
         .select(`*, proveedores ( nombre )`)
         .order('fecha', { ascending: false })
-    
-    if (error) console.error("Error al cargar:", error)
-    else {
+
+    if (error) {
+        console.error('Error al cargar labores:', error.message)
+        alert('No se pudieron cargar las labores.')
+    } else {
         setLabores(data || [])
-        // Extraer años únicos para el filtro
         const years = [...new Set((data || []).map(l => l.fecha.substring(0, 4)))].sort((a,b) => b - a)
         setAniosDisponibles(years)
     }
 
     setLoading(false)
-  }
+}
 
+  // DESPUÉS
   const eliminar = async (id) => {
-      if(confirm("¿Eliminar esta labor?")) {
-          await supabase.from('labores').delete().eq('id', id)
-          cargarDatos()
-      }
-  }
+    if (confirm('¿Eliminar esta labor? Los gastos vinculados a ella quedarán sin referencia de origen.')) {
+        const { error } = await supabase.from('labores').delete().eq('id', id)
+        if (error) {
+            alert('No se pudo eliminar la labor: ' + error.message)
+        } else {
+            cargarDatos()
+        }
+    }
+}
 
   const handleSort = (key) => {
       setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }))
@@ -5138,7 +5149,7 @@ function NuevaCosecha({ idCosecha, cerrarModal, alGuardar }) {
               ...formData,
               sector_id: formData.sector_id || null,
               cliente_id: formData.cliente_id || null,
-              oferta_id: undefined,
+              oferta_id: formData.oferta_id || null,
               kilos: totalKilos,
               precio_kilo: precioPromedio
           }
@@ -6921,6 +6932,7 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
   }, [form.monto])
 
   async function cargarMaestros() {
+  try {
     const [cat, sub, prov, soc, parc] = await Promise.all([
         supabase.from('categorias_gastos').select('*').order('nombre'),
         supabase.from('subcategorias_gastos').select('*').order('nombre'), 
@@ -6935,7 +6947,6 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
     setParcelas(parc.data || [])
 
     if (idGasto) {
-        // Carga de Gasto
         const { data } = await supabase.from('gastos').select('*, pagos_gastos(*)').eq('id', idGasto).single()
         if (data) {
             setForm({
@@ -6958,7 +6969,11 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
             estado: 'Pendiente' 
         }])
     }
+  } catch (err) {
+    console.error('Error cargando datos del formulario:', err)
+    alert('Hubo un error cargando el formulario. Por favor ciérralo e intenta de nuevo.')
   }
+}
 
   const handleCerrar = () => {
       if (hasChanges && !confirm("Tienes cambios sin guardar. ¿Cerrar de todas formas?")) return
@@ -7053,7 +7068,7 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
         }
 
         // 4. Sincronización Billetera Socios (Aportes/Pagos)
-        await supabase.from('movimientos_billetera').delete().ilike('descripcion', `%[GID:${gId}]`) 
+        await supabase.from('movimientos_billetera').delete().eq('gasto_id', gId)
 
         const pagosSocios = cuotas.filter(c => c.estado === 'Pagado' && c.pagado_por_socio_id)
         if (pagosSocios.length > 0) {
@@ -7062,7 +7077,8 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
                 tipo: 'Aporte', 
                 monto: c.monto,
                 fecha: c.fecha_vencimiento,
-                descripcion: `Pago Gasto: ${form.descripcion} [GID:${gId}]` 
+                descripcion: `Pago Gasto: ${form.descripcion}`,
+                gasto_id: gId
             }))
             await supabase.from('movimientos_billetera').insert(movsBilletera)
         }
@@ -8858,15 +8874,17 @@ function Riego() {
   async function cargarDatos() {
     setLoading(true)
     try {
-        const { data: sectoresBD } = await supabase
+        const { data: sectoresBD, error: errSec } = await supabase
             .from('sectores')
             .select(`*, parcelas ( nombre )`)
             .order('nombre')
-        
-        const { data: programasActivos } = await supabase
+        if (errSec) throw errSec
+
+        const { data: programasActivos, error: errProg } = await supabase
             .from('programas_riego')
             .select('*')
             .neq('estado', 'Finalizado')
+        if (errProg) throw errProg
 
         const sectoresProcesados = sectoresBD.map(s => {
             const miPrograma = programasActivos?.find(p => {
@@ -8874,11 +8892,9 @@ function Riego() {
                  if (p.sectores_ids && Array.isArray(p.sectores_ids) && p.sectores_ids.includes(s.id)) return true;
                  return false;
             })
-
             const caudalAspersor = s.caudal_lph || 0
             const numAspersores = s.cantidad_aspersores || 0
             const caudalTotalLph = caudalAspersor * numAspersores
-            
             let litrosSemana = 0
             if (miPrograma && miPrograma.turnos && caudalTotalLph > 0) {
                 let minutosSemana = 0
@@ -8887,7 +8903,6 @@ function Riego() {
                 misTurnos.forEach(t => { minutosSemana += (parseInt(t.duracion) || 0) * dias })
                 litrosSemana = (caudalTotalLph / 60) * minutosSemana
             }
-
             return { ...s, programa: miPrograma, caudalTotalLph, litrosSemana }
         })
 
@@ -8899,25 +8914,32 @@ function Riego() {
         }, {})
 
         setSectoresAgrupados(agrupados)
-    } catch (err) { console.error(err) } finally { setLoading(false) }
-  }
+    } catch (err) {
+        console.error('Error en Riego:', err.message)
+        alert('No se pudo cargar la información de riego.')
+    } finally {
+        setLoading(false)
+    }
+}
 
   async function cargarHistorial() {
-      let query = supabase
-          .from('programas_riego')
-          .select(`*, sectores ( nombre, caudal_lph, cantidad_aspersores, parcelas (nombre) )`)
-          .eq('estado', 'Finalizado')
-      
-      if (anioFiltro) {
-          const inicioAnio = `${anioFiltro}-01-01`
-          const finAnio = `${anioFiltro}-12-31`
-          query = query.gte('fecha_creacion', inicioAnio).lte('fecha_creacion', finAnio)
-      }
+    let query = supabase
+        .from('programas_riego')
+        .select(`*, sectores ( nombre, caudal_lph, cantidad_aspersores, parcelas (nombre) )`)
+        .eq('estado', 'Finalizado')
 
-      const { data, error } = await query
-      if (error) console.error(error)
-      else setHistorialProgramas(data)
-  }
+    if (anioFiltro) {
+        query = query.gte('fecha_creacion', `${anioFiltro}-01-01`).lte('fecha_creacion', `${anioFiltro}-12-31`)
+    }
+
+    const { data, error } = await query
+    if (error) {
+        console.error('Error cargando historial:', error.message)
+        alert('No se pudo cargar el historial de riego.')
+    } else {
+        setHistorialProgramas(data)
+    }
+}
 
   const handleSort = (campo) => {
       const isAsc = orden.campo === campo ? !orden.asc : true
@@ -9145,8 +9167,8 @@ function Riego() {
                             </div>
 
                             <div>
-                                <span style={{fontSize:'0.75rem', display:'block'}}>In: {new Date(prog.fecha_inicio).toLocaleDateString()}</span>
-                                <span style={{fontSize:'0.75rem', display:'block'}}>Out: {new Date(prog.fecha_fin).toLocaleDateString()}</span>
+                                <span style={{fontSize:'0.75rem', display:'block'}}>In: {prog.fecha_inicio ? new Date(prog.fecha_inicio).toLocaleDateString() : '-'}</span>
+                                <span style={{fontSize:'0.75rem', display:'block'}}>Out: {prog.fecha_fin ? new Date(prog.fecha_fin).toLocaleDateString() : 'Activo'}</span>
                             </div>
                             
                             <div>

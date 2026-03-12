@@ -102,12 +102,17 @@ function Labores() {
     setLoading(false)
 }
 
+  // DESPUÉS
   const eliminar = async (id) => {
-      if(confirm("¿Eliminar esta labor?")) {
-          await supabase.from('labores').delete().eq('id', id)
-          cargarDatos()
-      }
-  }
+    if (confirm('¿Eliminar esta labor? Los gastos vinculados a ella quedarán sin referencia de origen.')) {
+        const { error } = await supabase.from('labores').delete().eq('id', id)
+        if (error) {
+            alert('No se pudo eliminar la labor: ' + error.message)
+        } else {
+            cargarDatos()
+        }
+    }
+}
 
   const handleSort = (key) => {
       setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }))
