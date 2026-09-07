@@ -297,6 +297,7 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
     })
     const [metodoDistribucion, setMetodoDistribucion] = useState('Superficie')
     const [cuotas, setCuotas] = useState([])
+    const [modoPago, setModoPago] = useState('bruto') // 'bruto' | 'neto'
 
     useEffect(() => { cargarMaestros() }, [])
 
@@ -314,17 +315,40 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
     }, [registrarEnBodega])
 
     useEffect(() => {
-        if (cuotas.length === 1) {
-            const raw = parseFloat(form.monto || 0)
-            const bruto = (form.tipo_documento === 'Factura' && modoIngreso === 'neto')
-                ? Math.round(raw * 1.19)
-                : raw
-            const brutoStr = bruto > 0 ? bruto.toString() : ''
-            if (cuotas[0].monto !== brutoStr) {
-                const c = [...cuotas]; c[0].monto = brutoStr; setCuotas(c)
+        const raw = parseFloat(form.monto || 0)
+        const bruto = (form.tipo_documento === 'Factura' && modoIngreso === 'neto')
+            ? Math.round(raw * 1.19)
+            : raw
+        const neto = Math.round(bruto / 1.19)
+        const iva = bruto - neto
+
+        if (form.tipo_documento === 'Factura' && modoPago === 'neto' && bruto > 0) {
+            // Separar cuotas normales de la cuota IVA
+            const cuotasNormales = cuotas.filter(c => !c._esIva)
+            const cuotaIvaExistente = cuotas.find(c => c._esIva)
+            const nuevaIva = {
+                ...(cuotaIvaExistente || { fecha_vencimiento: '', forma_pago: 'Transferencia', pagado_por_socio_id: '', estado: 'Pendiente' }),
+                monto: iva.toString(),
+                _esIva: true
+            }
+            // Si solo hay 1 cuota normal y está vacía o tenía el bruto, ajustar a neto
+            const cuotasActualizadas = cuotasNormales.length === 0
+                ? [{ fecha_vencimiento: form.fecha, monto: neto.toString(), forma_pago: 'Transferencia', pagado_por_socio_id: '', estado: 'Pendiente' }]
+                : cuotasNormales
+            setCuotas([...cuotasActualizadas, nuevaIva])
+        } else if (form.tipo_documento !== 'Factura' || modoPago === 'bruto') {
+            // Eliminar cuota IVA si existía y volver a modo bruto
+            const cuotasSinIva = cuotas.filter(c => !c._esIva)
+            if (cuotasSinIva.length === 1 && bruto > 0) {
+                const brutoStr = bruto.toString()
+                if (cuotasSinIva[0].monto !== brutoStr) {
+                    setCuotas([{ ...cuotasSinIva[0], monto: brutoStr }])
+                }
+            } else if (cuotas.some(c => c._esIva)) {
+                setCuotas(cuotasSinIva)
             }
         }
-    }, [form.monto, form.tipo_documento, modoIngreso])
+    }, [form.monto, form.tipo_documento, modoIngreso, modoPago])
 
     async function cargarMaestros() {
         try {
@@ -843,24 +867,50 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
                         </div>
 
                         <div style={styles.paymentCard}>
-                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:15, paddingBottom:10, borderBottom:'1px solid #e2e8f0'}}>
+                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10, paddingBottom:10, borderBottom:'1px solid #e2e8f0'}}>
                                 <div style={{fontWeight:'bold', fontSize:'1rem', color:'#0f172a', display:'flex', alignItems:'center', gap:8}}><Wallet size={18}/> Plan de Pagos</div>
                                 <button type="button" onClick={() => setCuotas([...cuotas, {fecha_vencimiento: form.fecha, monto:'', forma_pago:'Transferencia', pagado_por_socio_id:'', estado:'Pendiente'}])} style={{backgroundColor:'#166534', color:'white', border:'none', borderRadius:6, padding:'6px 12px', fontSize:'0.8rem', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:5}}>
                                     <Plus size={14}/> Agregar Cuota
                                 </button>
                             </div>
 
+                            {form.tipo_documento === 'Factura' && (
+                                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:12, padding:'8px 12px', backgroundColor:'#f8fafc', borderRadius:8, border:'1px solid #e2e8f0'}}>
+                                    <span style={{fontSize:'0.75rem', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.3px'}}>¿Qué voy a pagar?</span>
+                                    <div style={{display:'flex', backgroundColor:'#f3f4f6', borderRadius:7, padding:3, gap:2}}>
+                                        {[['bruto','Bruto (c/IVA)'],['neto','Neto (s/IVA)']].map(([val, lbl]) => (
+                                            <button key={val} type="button" onClick={() => setModoPago(val)}
+                                                style={{padding:'5px 14px', borderRadius:5, border:'none', cursor:'pointer', fontSize:'0.78rem', fontWeight:'700',
+                                                    backgroundColor: modoPago === val ? 'white' : 'transparent',
+                                                    color: modoPago === val ? (val === 'neto' ? '#0369a1' : '#111827') : '#6b7280',
+                                                    boxShadow: modoPago === val ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'}}>
+                                                {lbl}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {modoPago === 'neto' && (
+                                        <span style={{fontSize:'0.72rem', color:'#0369a1', fontWeight:'600'}}>
+                                            Se creará una cuota para el IVA
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+
                             <div style={{overflowY:'auto', paddingRight:5}}>
                                 {cuotas.map((c, i) => (
                                     <div key={i} style={styles.cuotaItem}>
                                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                                             <div style={{flex:1, marginRight:10}}>
-                                                <label style={{fontSize:'0.7rem', color:'#6b7280', display:'block', marginBottom:2}}>Vencimiento</label>
-                                                <input type="date" value={c.fecha_vencimiento} onChange={e => updateCuota(i,'fecha_vencimiento',e.target.value)} style={styles.inputCuota}/>
+                                                <label style={{fontSize:'0.7rem', color: c._esIva ? '#0369a1' : '#6b7280', display:'block', marginBottom:2, fontWeight: c._esIva ? '700' : 'normal'}}>
+                                                    {c._esIva ? '📋 IVA 19% — Vencimiento' : 'Vencimiento'}
+                                                </label>
+                                                <input type="date" value={c.fecha_vencimiento} onChange={e => updateCuota(i,'fecha_vencimiento',e.target.value)} style={{...styles.inputCuota, borderColor: c._esIva ? '#bae6fd' : '#d1d5db', backgroundColor: c._esIva ? '#f0f9ff' : 'white'}}/>
                                             </div>
                                             <div style={{flex:1}}>
-                                                <label style={{fontSize:'0.7rem', color:'#6b7280', display:'block', marginBottom:2}}>Monto Cuota</label>
-                                                <TableMoneyInput value={c.monto} onChange={val => updateCuota(i,'monto',val)}/>
+                                                <label style={{fontSize:'0.7rem', color: c._esIva ? '#0369a1' : '#6b7280', display:'block', marginBottom:2, fontWeight: c._esIva ? '700' : 'normal'}}>
+                                                    {c._esIva ? 'Monto IVA (fijo)' : 'Monto Cuota'}
+                                                </label>
+                                                <TableMoneyInput value={c.monto} onChange={val => { if (!c._esIva) updateCuota(i,'monto',val) }}/>
                                             </div>
                                         </div>
                                         <div style={{display:'flex', gap:10, alignItems:'center'}}>
@@ -874,7 +924,11 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
                                             <select value={c.estado} onChange={e => updateCuota(i,'estado',e.target.value)} style={{...styles.inputCuota, width:'auto', color: c.estado==='Pagado'?'#166534':'#991b1b', fontWeight:'bold'}}>
                                                 <option value="Pagado">Pagado</option><option value="Pendiente">Pendiente</option>
                                             </select>
-                                            <button type="button" onClick={() => setCuotas(cuotas.filter((_,idx)=>idx!==i))} style={styles.btnTrash}><Trash2 size={16}/></button>
+                                        <button type="button" onClick={() => { if (c._esIva) return; setCuotas(cuotas.filter((_,idx)=>idx!==i)) }}
+                                            style={{...styles.btnTrash, opacity: c._esIva ? 0.3 : 1, cursor: c._esIva ? 'not-allowed' : 'pointer'}}
+                                            title={c._esIva ? 'La cuota de IVA no se puede eliminar' : 'Eliminar cuota'}>
+                                            <Trash2 size={16}/>
+                                        </button>
                                         </div>
                                     </div>
                                 ))}
@@ -884,14 +938,23 @@ function NuevoGasto({ idGasto, cerrarModal, alGuardar }) {
                                 {(() => {
                                     const raw = parseFloat(form.monto || 0)
                                     const bruto = (form.tipo_documento === 'Factura' && modoIngreso === 'neto') ? Math.round(raw * 1.19) : raw
+                                    const neto = Math.round(bruto / 1.19)
                                     const sumaCuotas = cuotas.reduce((a,b) => a + parseFloat(b.monto||0), 0)
+                                    const esModoPagoNeto = form.tipo_documento === 'Factura' && modoPago === 'neto'
                                     const cuadra = Math.abs(sumaCuotas - bruto) < 10
+                                    const cuotasNormales = cuotas.filter(c => !c._esIva)
+                                    const sumaNormales = cuotasNormales.reduce((a,b) => a + parseFloat(b.monto||0), 0)
+                                    const cuadraNeto = Math.abs(sumaNormales - neto) < 10
                                     return (
                                         <>
-                                            <div style={{fontSize:'0.85rem', color:'#475569'}}>
-                                                Suma Pagos: <strong>$ {sumaCuotas.toLocaleString('es-CL')}</strong>
-                                                {form.tipo_documento === 'Factura' && modoIngreso === 'neto' && bruto > 0 && (
-                                                    <span style={{fontSize:'0.72rem', color:'#9ca3af', marginLeft:5}}>(bruto c/IVA)</span>
+                                            <div style={{fontSize:'0.85rem', color:'#475569', display:'flex', flexDirection:'column', gap:2}}>
+                                                {esModoPagoNeto ? (
+                                                    <>
+                                                        <span>Cuotas neto: <strong>$ {sumaNormales.toLocaleString('es-CL')}</strong> <span style={{fontSize:'0.72rem', color: cuadraNeto ? '#10b981' : '#ef4444'}}>/ $ {neto.toLocaleString('es-CL')} esperado</span></span>
+                                                        <span style={{fontSize:'0.72rem', color:'#0369a1'}}>+ IVA cuota separada: $ {(bruto - neto).toLocaleString('es-CL')}</span>
+                                                    </>
+                                                ) : (
+                                                    <span>Suma Pagos: <strong>$ {sumaCuotas.toLocaleString('es-CL')}</strong></span>
                                                 )}
                                             </div>
                                             {cuadra

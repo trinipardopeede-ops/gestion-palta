@@ -47,7 +47,7 @@ function DetalleSector() {
         })
         setProgramaRiego(miPrograma)
 
-        const { data: allLabores } = await supabase.from('labores_campo').select('*').order('fecha', { ascending: false }).limit(200)
+        const { data: allLabores } = await supabase.from('labores').select('*').order('fecha', { ascending: false }).limit(200)
         const misLabores = allLabores?.filter(l => {
             const sId = Number(id)
             if (l.sectores_ids && Array.isArray(l.sectores_ids)) return l.sectores_ids.map(Number).includes(sId)

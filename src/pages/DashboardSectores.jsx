@@ -47,7 +47,7 @@ function DashboardSectores() {
         if (errSect) throw errSect
 
         const { data: riegosActivos } = await supabase.from('programas_riego').select('*').neq('estado', 'Finalizado')
-        const { data: ultimasLabores } = await supabase.from('labores_campo').select('*').order('fecha', { ascending: false }).limit(200)
+        const { data: ultimasLabores } = await supabase.from('labores').select('*').order('fecha', { ascending: false }).limit(200)
 
         if (parcelas && sectores) {
             const estructura = parcelas.map(p => {

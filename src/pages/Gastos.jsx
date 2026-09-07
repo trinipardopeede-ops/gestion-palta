@@ -395,7 +395,20 @@ function Gastos() {
         {/* Desplegable — Plan de pagos */}
         {expandida && tienePagos && (
           <div style={{borderTop:'2px solid #f3f4f6', padding:'10px 14px', backgroundColor:'#f9fafb'}}>
-            <div style={{fontSize:'0.7rem', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:7}}>Plan de Pagos</div>
+            {(() => {
+              const totalCuotas = g.pagos_gastos.reduce((a, p) => a + parseFloat(p.monto || 0), 0)
+              const pagado = g.pagos_gastos.filter(p => p.estado === 'Pagado').reduce((a, p) => a + parseFloat(p.monto || 0), 0)
+              const pendiente = totalCuotas - pagado
+              return (
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:7}}>
+                  <div style={{fontSize:'0.7rem', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px'}}>Plan de Pagos</div>
+                  <div style={{display:'flex', gap:10, fontSize:'0.72rem', fontWeight:'700'}}>
+                    <span style={{color:'#10b981'}}>Pagado: {formatMoney(pagado)}</span>
+                    {pendiente > 0 && <span style={{color:'#ef4444'}}>Saldo: {formatMoney(pendiente)}</span>}
+                  </div>
+                </div>
+              )
+            })()}
             <div style={{display:'flex', flexDirection:'column', gap:5}}>
               {g.pagos_gastos
                 .slice().sort((a,b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento))
